@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenClaw Agent 源码学习</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 62.5%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      color: #1e293b;
+      line-height: 1.7;
+      background: #f8fafc;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .cover {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 24px;
+      background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #f0f9ff 100%);
+    }
+
+    .cover-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+      color: #fff;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      margin-bottom: 32px;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+    }
+
+    .cover-title {
+      font-size: 48px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.03em;
+      text-align: center;
+      margin-bottom: 12px;
+      line-height: 1.2;
+    }
+
+    .cover-title span {
+      background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .cover-subtitle {
+      font-size: 17px;
+      color: #64748b;
+      text-align: center;
+      margin-bottom: 8px;
+      max-width: 600px;
+    }
+
+    .cover-desc {
+      font-size: 14px;
+      color: #94a3b8;
+      text-align: center;
+      margin-bottom: 48px;
+      max-width: 600px;
+    }
+
+    .cover-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      max-width: 960px;
+      width: 100%;
+      margin-bottom: 40px;
+    }
+
+    .cover-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 22px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .cover-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.12);
+      border-color: #3b82f6;
+    }
+
+    .cover-card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+
+    .cover-card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 4px;
+    }
+
+    .cover-card-count {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .cover-nav {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 28px 36px;
+      max-width: 960px;
+      width: 100%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .cover-nav-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #374151;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .cover-nav-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .cover-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: #f8fafc;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+
+    .cover-nav-item:hover {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+
+    .cover-nav-num {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+      border-radius: 7px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .cover-nav-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .cover-nav-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1f2937;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cover-nav-section {
+      font-size: 10px;
+      color: #9ca3af;
+    }
+
+    .cover-footer {
+      margin-top: 36px;
+      font-size: 12px;
+      color: #9ca3af;
+      text-align: center;
+    }
+
+    @media (max-width: 768px) {
+      .cover-title { font-size: 32px; }
+      .cover-cards { grid-template-columns: 1fr; }
+      .cover-nav-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="cover">
+    <div class="cover-badge">📖 Observable Agent · 源码学习</div>
+    <h1 class="cover-title">OpenClaw<span>Agent 源码学习</span></h1>
+    <p class="cover-subtitle">基于 OpenClaw 源码深度分析的 AI Agent 原理学习文档</p>
+    <p class="cover-desc">9 大模块 · 33 篇文档 · 涵盖架构、网关、执行引擎、路由会话、上下文、记忆、工具安全、Provider、扩展</p>
+
+    <div class="cover-cards">
+      <a class="cover-card" href="01-architecture/01-layered-architecture.html">
+        <div class="cover-card-icon" style="background: linear-gradient(135deg, #dbeafe, #eef2ff);">🏗️</div>
+        <div class="cover-card-title">系统架构基础</div>
+        <div class="cover-card-count">3 篇 · 架构全景 · 核心概念</div>
+      </a>
+      <a class="cover-card" href="02-gateway-control/01-gateway-positioning.html">
+        <div class="cover-card-icon" style="background: linear-gradient(135deg, #fef3c7, #fffbeb);">⚙️</div>
+        <div class="cover-card-title">网关与控制平面</div>
+        <div class="cover-card-count">4 篇 · Gateway · WebSocket · CLI</div>
+      </a>
+      <a class="cover-card" href="03-execution-engine/01-agent-loop-workflow.html">
+        <div class="cover-card-icon" style="background: linear-gradient(135deg, #d1fae5, #ecfdf5);">🤖</div>
+        <div class="cover-card-title">智能体执行引擎</div>
+        <div class="cover-card-count">4 篇 · Agent Loop · 并发 · 流式</div>
+      </a>
+      <a class="cover-card" href="04-routing-session/01-routing-engine.html">
+        <div class="cover-card-icon" style="background: linear-gradient(135deg, #fce7f3, #fdf2f8);">🔀</div>
+        <div class="cover-card-title">路由与会话管理</div>
+        <div class="cover-card-count">4 篇 · 路由 · Session · 通道节点</div>
+      </a>
+      <a class="cover-card" href="05-context-engineering/01-context-window.html">
+        <div class="cover-card-icon" style="background: linear-gradient(135deg, #f0fdf4, #dcfce7);">📐</div>
+        <div class="cover-card-title">上下文工程</div>
+        <div class="cover-card-count">3 篇 · 上下文窗口 · 引擎 · 压缩</div>
+      </a>
+      <a class="cover-card" href="06-memory-systems/01-memory-framework.html">
+        <div class="cover-card-icon" style="background: linear-gradient(135deg, #f5f3ff, #ede9fe);">🧠</div>
+        <div class="cover-card-title">记忆系统</div>
+        <div class="cover-card-count">4 篇 · 记忆框架 · 向量搜索</div>
+      </a>
+      <a class="cover-card" href="07-tools-safety/01-tool-system.html">
+        <div class="cover-card-icon" style="background: linear-gradient(135deg, #fef2f2, #fee2e2);">🛡️</div>
+        <div class="cover-card-title">工具与安全系统</div>
+        <div class="cover-card-count">3 篇 · 工具 · 权限 · 安全</div>
+      </a>
+      <a class="cover-card" href="08-provider-models/01-provider-adapters.html">
+        <div class="cover-card-icon" style="background: linear-gradient(135deg, #fff7ed, #ffedd5);">🔌</div>
+        <div class="cover-card-title">Provider 与模型</div>
+        <div class="cover-card-count">3 篇 · Provider · 故障转移</div>
+      </a>
+      <a class="cover-card" href="09-extensions/01-plugin-system.html">
+        <div class="cover-card-icon" style="background: linear-gradient(135deg, #ecfeff, #cffafe);">🧩</div>
+        <div class="cover-card-title">扩展机制</div>
+        <div class="cover-card-count">5 篇 · 插件 · 钩子 · 多 Agent</div>
+      </a>
+    </div>
+
+    <div class="cover-nav">
+      <div class="cover-nav-title">📖 学习路径</div>
+      <div class="cover-nav-grid">
+        <a class="cover-nav-item" href="01-architecture/01-layered-architecture.html">
+          <div class="cover-nav-num">01</div>
+          <div class="cover-nav-text">
+            <div class="cover-nav-name">分层架构全景</div>
+            <div class="cover-nav-section">从零理解 OpenClaw 架构</div>
+          </div>
+        </a>
+        <a class="cover-nav-item" href="03-execution-engine/01-agent-loop-workflow.html">
+          <div class="cover-nav-num">02</div>
+          <div class="cover-nav-text">
+            <div class="cover-nav-name">Agent Loop 工作流</div>
+            <div class="cover-nav-section">核心执行循环</div>
+          </div>
+        </a>
+        <a class="cover-nav-item" href="04-routing-session/01-routing-engine.html">
+          <div class="cover-nav-num">03</div>
+          <div class="cover-nav-text">
+            <div class="cover-nav-name">路由层与 Session Key</div>
+            <div class="cover-nav-section">消息路由机制</div>
+          </div>
+        </a>
+        <a class="cover-nav-item" href="05-context-engineering/01-context-window.html">
+          <div class="cover-nav-num">04</div>
+          <div class="cover-nav-text">
+            <div class="cover-nav-name">上下文窗口管理</div>
+            <div class="cover-nav-section">窗口与压缩</div>
+          </div>
+        </a>
+        <a class="cover-nav-item" href="06-memory-systems/01-memory-framework.html">
+          <div class="cover-nav-num">05</div>
+          <div class="cover-nav-text">
+            <div class="cover-nav-name">记忆框架设计</div>
+            <div class="cover-nav-section">记忆系统原理</div>
+          </div>
+        </a>
+        <a class="cover-nav-item" href="07-tools-safety/01-tool-system.html">
+          <div class="cover-nav-num">06</div>
+          <div class="cover-nav-text">
+            <div class="cover-nav-name">工具系统架构</div>
+            <div class="cover-nav-section">工具与审批</div>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <div class="cover-footer">基于 OpenClaw 源码深度分析 · 持续更新</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>01 · Agent Loop 完整工作流</title>
+  <style>
+    /* ===== Reset & Base ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 62.5%; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      font-size: 15px;
+      color: #1e293b;
+      line-height: 1.7;
+      background: #ffffff;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    /* ===== Layout ===== */
+    .app {
+      display: flex;
+      min-height: 100vh;
+    }
+    
+    /* ===== Sidebar ===== */
+        .sidebar {
+      width: 300px;
+      min-width: 300px;
+      background: linear-gradient(180deg, #fafbfc 0%, #f4f6f8 100%);
+      border-right: 1px solid #e8ebed;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .sidebar::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    .sidebar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .sidebar::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 4px;
+    }
+    
+    .sidebar::-webkit-scrollbar-thumb:hover {
+      background: #9ca3af;
+    }
+    
+    .sidebar-header {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid #e8ebed;
+    }
+    
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #111827;
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    
+    .sidebar-brand .icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+    
+    .sidebar-search {
+      padding: 16px 20px;
+    }
+    
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px 14px;
+      transition: all 0.2s ease;
+    }
+    
+    .search-box:focus-within {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+    
+    .search-box input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 13px;
+      color: #374151;
+      background: transparent;
+    }
+    
+    .search-box input::placeholder {
+      color: #9ca3af;
+    }
+    
+    .search-box svg {
+      width: 16px;
+      height: 16px;
+      color: #9ca3af;
+    }
+    
+    .sidebar-nav {
+      flex: 1;
+      padding: 12px 10px;
+      overflow-y: auto;
+    }
+    
+    .sidebar-nav ul, .sidebar-nav li {
+      list-style: none;
+    }
+    
+    .sidebar-section {
+      margin-bottom: 6px;
+    }
+    
+    .sidebar-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 12px;
+      margin: 0 2px;
+      transition: all 0.2s ease;
+    }
+    
+    .sidebar-section-header:hover {
+      background: rgba(59, 130, 246, 0.07);
+    }
+    
+    .sidebar-section-header.open {
+      background: rgba(59, 130, 246, 0.1);
+    }
+    
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .section-num {
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
+    }
+    
+    .section-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    
+    .sidebar-section-header .arrow {
+      width: 18px;
+      height: 18px;
+      color: #9ca3af;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .sidebar-section-header:hover .arrow {
+      color: #6b7280;
+    }
+    
+    .sidebar-section-header.open .arrow {
+      transform: rotate(90deg);
+      color: #3b82f6;
+    }
+    
+    .sidebar-section-items {
+      display: none;
+      animation: slideDown 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .sidebar-section-items.open {
+      display: block;
+    }
+    
+    .sidebar-section-items ul {
+      padding: 6px 6px 10px;
+    }
+    
+    .sidebar-section-items li {
+      margin: 3px 0;
+    }
+    
+    .sidebar-section-items li.level-2 {
+      padding-left: 14px;
+    }
+    
+    .sidebar-section-items li.level-3 {
+      padding-left: 28px;
+    }
+    
+    .sidebar-section-items a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      font-size: 13px;
+      color: #6b7280;
+      text-decoration: none;
+      border-radius: 10px;
+      border-left: 2px solid transparent;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+    
+    .sidebar-section-items a:hover {
+      color: #3b82f6;
+      background: rgba(59, 130, 246, 0.06);
+      border-left-color: rgba(59, 130, 246, 0.3);
+    }
+    
+    .sidebar-section-items a.active {
+      color: #2563eb;
+      background: linear-gradient(90deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.06) 100%);
+      font-weight: 500;
+      border-left-color: #3b82f6;
+    }
+    
+    .sidebar-section-items a.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 20px;
+      background: linear-gradient(180deg, #3b82f6 0%, #6366f1 100%);
+      border-radius: 0 3px 3px 0;
+    }
+    
+    .sidebar-section-items a .num {
+      font-size: 11px;
+      font-weight: 500;
+      color: #9ca3af;
+      min-width: 28px;
+      padding: 2px 6px;
+      background: #f3f4f6;
+      border-radius: 4px;
+      text-align: center;
+    }
+    
+    .sidebar-section-items a:hover .num {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+    }
+    
+    .sidebar-section-items a.active .num {
+      background: rgba(59, 130, 246, 0.15);
+      color: #2563eb;
+    }
+    
+    .sidebar-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
+      margin: 10px 14px 14px;
+    }
+    
+    .sidebar-external {
+      padding: 0 12px 20px;
+    }
+    
+    .sidebar-external a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6b7280;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    
+    .sidebar-external a:hover {
+      color: #3b82f6;
+      border-color: #3b82f6;
+      background: #f0f7ff;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+    }
+    
+    .sidebar-external a svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    /* ===== Content ===== */
+    .content {
+      flex: 1;
+      margin-left: 300px;
+      padding: 48px 72px;
+      min-height: 100vh;
+      background: #ffffff;
+    }
+    
+    /* ===== Table of Contents ===== */
+    .toc {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 24px 0 32px;
+    }
+    .toc-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e293b;
+      margin: 0 0 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .toc-item {
+      padding: 6px 0;
+    }
+    .toc-item a {
+      color: #475569;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      display: block;
+    }
+    .toc-item a:hover {
+      color: #3b82f6;
+      padding-left: 6px;
+    }
+    .toc-h2 {
+      font-size: 14px;
+      font-weight: 500;
+      border-bottom: 1px solid #f1f5f9;
+      margin-bottom: 4px;
+    }
+    .toc-h2:last-child {
+      border-bottom: none;
+    }
+    .toc-h3 {
+      padding-left: 16px;
+      font-size: 13px;
+    }
+    .toc-h3 a::before {
+      content: "·";
+      margin-right: 8px;
+      color: #94a3b8;
+    }
+    
+    .markdown-section {
+      max-width: 1200px;
+    }
+    
+    /* ===== Typography ===== */
+    .markdown-section h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #111827;
+      letter-spacing: -0.025em;
+      margin: 0 0 28px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #e5e7eb;
+      line-height: 1.3;
+    }
+    
+    .markdown-section h2 {
+      font-size: 22px;
+      font-weight: 650;
+      color: #1f2937;
+      letter-spacing: -0.015em;
+      margin: 48px 0 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .markdown-section h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: #2563eb;
+      margin: 32px 0 14px;
+      padding-left: 12px;
+      border-left: 3px solid #3b82f6;
+    }
+    
+    .markdown-section h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #374151;
+      margin: 24px 0 10px;
+    }
+    
+    .markdown-section p {
+      margin: 14px 0;
+      color: #4b5563;
+      line-height: 1.75;
+      font-size: 14.5px;
+    }
+    
+    .markdown-section a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 500;
+      border-bottom: 1px solid transparent;
+      transition: all 0.15s ease;
+    }
+    
+    .markdown-section a:hover {
+      color: #1d4ed8;
+      border-bottom-color: #2563eb;
+    }
+    
+    .markdown-section code {
+      background: #f3f4f6;
+      color: #dc2626;
+      padding: 3px 7px;
+      font-size: 13px;
+      border-radius: 5px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Consolas', monospace;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .markdown-section pre {
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 24px 28px;
+      overflow-x: auto;
+      margin: 24px 0;
+      border: 1px solid #334155;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    .markdown-section pre code {
+      background: transparent;
+      color: #e2e8f0;
+      padding: 0;
+      font-size: 13.5px;
+      line-height: 1.7;
+      border: none;
+    }
+    
+    .markdown-section blockquote {
+      background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+      border-left: 4px solid #3b82f6;
+      border-radius: 0 12px 12px 0;
+      padding: 18px 24px;
+      margin: 24px 0;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08);
+    }
+    
+    .markdown-section blockquote p {
+      margin: 0;
+      color: #374151;
+      line-height: 1.7;
+    }
+    
+    .markdown-section table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 24px 0;
+      font-size: 14px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .markdown-section table th {
+      background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+      font-weight: 600;
+      text-align: left;
+      padding: 14px 18px;
+      color: #374151;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .markdown-section table td {
+      padding: 13px 18px;
+      border-top: 1px solid #f3f4f6;
+      color: #4b5563;
+    }
+    
+    .markdown-section table tr:nth-child(2n) td {
+      background: #fafafa;
+    }
+    
+    .markdown-section table tr:hover td {
+      background: #f0f9ff;
+    }
+    
+    .markdown-section ul, .markdown-section ol {
+      padding-left: 26px;
+      margin: 14px 0;
+    }
+    
+    .markdown-section li {
+      margin: 8px 0;
+      color: #4b5563;
+      line-height: 1.7;
+    }
+    
+    .markdown-section li::marker {
+      color: #3b82f6;
+    }
+    
+    .markdown-section hr {
+      height: 2px;
+      background: linear-gradient(90deg, #e5e7eb, #f3f4f6, #e5e7eb);
+      border: none;
+      margin: 40px 0;
+    }
+    
+    .markdown-section img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    /* ===== Mermaid Diagrams ===== */
+    /* ===== Mermaid Diagrams ===== */
+    .mermaid {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+      overflow-x: auto;
+      border: 1px solid #e2e8f0;
+      display: block;
+    }
+    .mermaid.rendered {
+      display: block;
+    }
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+    .mermaid svg text {
+      fill: #1e293b !important;
+    }
+    .mermaid-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 16px;
+      color: #dc2626;
+      margin: 20px 0;
+    }
+    .mermaid-loading {
+      background: #f8fafc;
+      border: 1px dashed #e2e8f0;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+      color: #64748b;
+      text-align: center;
+    }
+    
+    /* ===== Navigation ===== */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+    }
+    
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      color: #475569;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+    
+    .nav a:hover {
+      background: #3b82f6;
+      color: #fff;
+      border-color: #3b82f6;
+    }
+    
+    /* ===== Mobile ===== */
+    @media (max-width: 1024px) {
+      .sidebar { transform: translateX(-100%); transition: transform 0.2s ease; }
+      .sidebar.open { transform: translateX(0); }
+      .content { margin-left: 0; padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <a href="/index.html" class="sidebar-brand">
+          <span class="icon">📚</span>
+          OpenClaw Agent 源码学习
+        </a>
+      </div>
+      
+      <div class="sidebar-search">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input type="text" placeholder="搜索文档..." id="searchInput">
+        </div>
+      </div>
+      
+      <div class="sidebar-nav">
+        <div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">01</span>
+            <span class="section-name">系统架构基础</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/01-architecture/01-layered-architecture.html"><span class="num">01</span>分层架构全景</a></li><li><a href="/01-architecture/02-core-concepts.html"><span class="num">02</span>核心概念模型</a></li><li><a href="/01-architecture/03-core-source-index.html"><span class="num">03</span>核心源码索引</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">02</span>
+            <span class="section-name">网关与控制平面</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/02-gateway-control/01-gateway-positioning.html"><span class="num">01</span>Gateway 定位与职责</a></li><li><a href="/02-gateway-control/02-config-system.html"><span class="num">02</span>配置系统与热重载</a></li><li><a href="/02-gateway-control/03-websocket-protocol.html"><span class="num">03</span>WebSocket 协议层</a></li><li><a href="/02-gateway-control/04-cli-command-system.html"><span class="num">04</span>CLI 层与命令系统</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">03</span>
+            <span class="section-name">智能体执行引擎</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/03-execution-engine/01-agent-loop-workflow.html"><span class="num">01</span>Agent Loop 工作流</a></li><li><a href="/03-execution-engine/02-concurrency-control.html"><span class="num">02</span>队列与并发控制</a></li><li><a href="/03-execution-engine/03-streaming-events.html"><span class="num">03</span>流式输出与事件机制</a></li><li><a href="/03-execution-engine/04-timeout-lifecycle.html"><span class="num">04</span>超时与生命周期</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">04</span>
+            <span class="section-name">路由与会话管理</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/04-routing-session/01-routing-engine.html"><span class="num">01</span>路由层与 Session Key</a></li><li><a href="/04-routing-session/02-session-lifecycle.html"><span class="num">02</span>会话生命周期与重置</a></li><li><a href="/04-routing-session/03-session-tools.html"><span class="num">03</span>会话工具与子智能体</a></li><li><a href="/04-routing-session/04-channels-nodes.html"><span class="num">04</span>通道与节点架构</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">05</span>
+            <span class="section-name">上下文工程</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/05-context-engineering/01-context-window.html"><span class="num">01</span>上下文窗口管理</a></li><li><a href="/05-context-engineering/02-context-engine.html"><span class="num">02</span>上下文引擎</a></li><li><a href="/05-context-engineering/03-compaction-pruning.html"><span class="num">03</span>压缩与修剪</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">06</span>
+            <span class="section-name">记忆系统</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/06-memory-systems/01-memory-storage-layer.html"><span class="num">01</span>记忆存储层</a></li><li><a href="/06-memory-systems/02-active-retrieval.html"><span class="num">02</span>主动检索层</a></li><li><a href="/06-memory-systems/03-consolidation-backends.html"><span class="num">03</span>后台整理层</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">07</span>
+            <span class="section-name">工具与安全系统</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/07-tools-safety/01-tool-system.html"><span class="num">01</span>工具系统架构</a></li><li><a href="/07-tools-safety/02-permission-approval.html"><span class="num">02</span>权限模式与审批</a></li><li><a href="/07-tools-safety/03-safety-strategy.html"><span class="num">03</span>安全策略配置</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">08</span>
+            <span class="section-name">Provider 与模型管理</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/08-provider-models/01-provider-adapters.html"><span class="num">01</span>Provider 适配层</a></li><li><a href="/08-provider-models/02-model-failover.html"><span class="num">02</span>模型故障转移</a></li><li><a href="/08-provider-models/03-auth-cooldown.html"><span class="num">03</span>认证管理</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">09</span>
+            <span class="section-name">扩展机制</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/09-extensions/01-plugin-system.html"><span class="num">01</span>插件系统</a></li><li><a href="/09-extensions/02-hooks-system.html"><span class="num">02</span>钩子系统</a></li><li><a href="/09-extensions/03-multi-agent-routing.html"><span class="num">03</span>多智能体路由</a></li><li><a href="/09-extensions/04-parallel-lanes.html"><span class="num">04</span>并行专家通道</a></li><li><a href="/09-extensions/05-workspace-config.html"><span class="num">05</span>工作区配置</a></li></ul></div></div>
+      </div>
+      
+      <div class="sidebar-external">
+        <a href="https://github.com/Hyper66666/claude-code-sourcemap" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+          GitHub 源码
+        </a>
+      </div>
+    </nav>
+    <main class="content">
+      <article class="markdown-section">
+        <h1 id="01-agent-loop-完整工作流">01 · Agent Loop 完整工作流</h1><blockquote>
+<p><strong>学习要点</strong></p>
+<ul>
+<li>Agent Loop 从用户消息到最终回复经历了哪些阶段？</li>
+<li>调度层、执行层、事件层各负责什么？5 层状态机如何协作？</li>
+<li>runEmbeddedPiAgent 的内部流程是怎样的？</li>
+<li>Auto-Reply 的决策流程如何决定消息是丢弃、重置还是执行？</li>
+<li>流式输出如何通过事件分离（lifecycle/assistant/tool）工作？</li>
+</ul>
+</blockquote>
+<hr>
+<h2 id="1-agent-loop-概述">1. Agent Loop 概述</h2><p>智能体循环（Agent Loop）是将一条消息转化为操作和最终回复的<strong>权威路径</strong>。一次循环是每个会话的<strong>单次串行运行</strong>。</p>
+<blockquote>
+<p>Agent Loop 的核心思想：不是一次 <code>model.generate()</code> 就结束，而是<strong>多层状态机</strong>协同工作——队列控制（session lane → global lane）→ 执行（attempt）→ 事件稳定化（subscribe）→ 压缩等待（wait compaction）→ 收尾（finalize）→ 出错时自动恢复（profile 轮换 → compact → fallback）。</p>
+</blockquote>
+<hr>
+<h2 id="2-入口点">2. 入口点</h2><p>Agent Loop 可以通过以下两种方式触发：</p>
+<table>
+<thead>
+<tr>
+<th>入口</th>
+<th>用途</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Gateway RPC</strong></td>
+<td><code>agent</code> + <code>agent.wait</code></td>
+<td>远程调用，异步模式：<code>agent</code> 返回 runId，<code>agent.wait</code> 轮询结果</td>
+</tr>
+<tr>
+<td><strong>CLI</strong></td>
+<td><code>agent</code> 命令</td>
+<td>本地命令行执行，适合调试</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-完整调用流程">3. 完整调用流程</h2><p>一次完整的 Agent 调用从客户端发起请求到收到最终回复：</p>
+<div class="mermaid">sequenceDiagram
+    participant C as Client
+    participant GW as Gateway
+    participant AR as Agent Runner
+    participant AT as Attempt
+    participant SS as Subscribe
+    participant M as AI Model
+
+    Note over C,M: 第 1 步：发起运行
+    C->>GW: agent.run(message)
+    GW->>GW: 验证参数 + 解析会话
+    GW-->>C: { runId, acceptedAt }
+
+    Note over GW,M: 第 2 步：执行循环
+    GW->>AR: runEmbeddedPiAgent()
+    AR->>AR: session lane 排队 → global lane 排队
+    AR->>AR: 构建 pi 会话
+    AR->>AT: runEmbeddedAttempt()
+
+    Note over AT,SS: 第 3 步：LLM 调用 + 流式事件
+    AT->>SS: subscribe
+    SS->>M: LLM 调用
+    M-->>SS: stream events (token / tool_use)
+    SS-->>AT: 事件稳定化
+
+    Note over AT,GW: 第 4 步：返回
+    AT-->>AR: payload + usage meta
+    AR-->>GW: lifecycle end
+
+    Note over C,GW: 第 5 步：查询结果
+    C->>GW: agent.wait(runId)
+    GW-->>C: { status, startedAt, endedAt }</div><h3 id="各阶段说明">各阶段说明</h3><table>
+<thead>
+<tr>
+<th align="center">阶段</th>
+<th>步骤</th>
+<th>核心组件</th>
+<th>关键操作</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>① 发起</strong></td>
+<td>验证参数 + 解析 session</td>
+<td>Gateway</td>
+<td><code>agent.run()</code> 返回 <code>runId + acceptedAt</code></td>
+</tr>
+<tr>
+<td align="center"><strong>② 排队</strong></td>
+<td>session lane → global lane</td>
+<td>Agent Runner</td>
+<td>双层排队保证会话内串行</td>
+</tr>
+<tr>
+<td align="center"><strong>③ 构建</strong></td>
+<td>加载技能、注入提示词</td>
+<td>Agent Runner</td>
+<td>系统提示词 = 基础 + 技能 + 引导 + 覆盖</td>
+</tr>
+<tr>
+<td align="center"><strong>④ 执行</strong></td>
+<td>LLM 调用 + 工具循环</td>
+<td>Attempt</td>
+<td>真实 model.generate() + 工具解析执行</td>
+</tr>
+<tr>
+<td align="center"><strong>⑤ 流式</strong></td>
+<td>事件分离收集</td>
+<td>Subscribe</td>
+<td>lifecycle/assistant/tool 三流</td>
+</tr>
+<tr>
+<td align="center"><strong>⑥ 返回</strong></td>
+<td>payload + usage meta</td>
+<td>Agent Runner</td>
+<td>回复负载 + Token 用量</td>
+</tr>
+<tr>
+<td align="center"><strong>⑦ 查询</strong></td>
+<td>轮询运行状态</td>
+<td>Gateway</td>
+<td><code>agent.wait({ status, startedAt, endedAt })</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="4-runembeddedpiagent-内部流程">4. runEmbeddedPiAgent 内部流程</h2><p><code>runEmbeddedPiAgent(...)</code> 是 Agent Loop 的<strong>核心调度函数</strong>，内部依次经历以下阶段：</p>
+<div class="mermaid">flowchart TB
+    subgraph 队列控制
+        direction TB
+        Q1["① 每会话队列串行化
+session lane concurrency=1"]:::queue
+        Q2["② 全局队列串行化
+global lane maxPending=M"]:::queue
+    end
+
+    subgraph 会话构建
+        direction TB
+        S1["③ 解析模型配置
+primary + fallbacks"]:::build
+        S2["④ 加载认证配置
+auth profiles"]:::build
+        S3["⑤ 构建 pi 会话
+SessionManager"]:::build
+    end
+
+    subgraph 执行
+        direction TB
+        E1["⑥ 订阅 pi 事件
+subscribeEmbeddedPiSession"]:::exec
+        E2["⑦ 流式输出增量
+assistant + tool events"]:::exec
+        E3["⑧ 强制超时中止
+timeoutSeconds"]:::exec
+    end
+
+    subgraph 返回
+        direction TB
+        R1["⑨ 返回负载 payload
+助手文本 + 工具结果"]:::ret
+        R2["⑩ 返回用量元数据
+usage + provider + model"]:::ret
+    end
+
+    Q1 & Q2 --> S1 --> S2 --> S3 --> E1 --> E2 --> E3 --> R1 & R2
+
+    classDef queue fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+    classDef build fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef exec fill:#d1fae5,stroke:#10b981,color:#065f46
+    classDef ret fill:#fce7f3,stroke:#ec4899,color:#9d174d</div><h3 id="各步骤详解">各步骤详解</h3><table>
+<thead>
+<tr>
+<th align="center">步骤</th>
+<th>说明</th>
+<th>关键参数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>① session lane</strong></td>
+<td>每会话一个队列，concurrency=1，保证消息顺序</td>
+<td>按 session key 隔离</td>
+</tr>
+<tr>
+<td align="center"><strong>② global lane</strong></td>
+<td>全局队列，限制最大并发运行数</td>
+<td><code>maxPending</code> 兜底</td>
+</tr>
+<tr>
+<td align="center"><strong>③ 模型配置</strong></td>
+<td>解析 agents.defaults.model.primary + fallbacks</td>
+<td><code>model-fallback.ts</code></td>
+</tr>
+<tr>
+<td align="center"><strong>④ 认证配置</strong></td>
+<td>加载 auth profiles，按优先级轮换</td>
+<td><code>auth-profiles.json</code></td>
+</tr>
+<tr>
+<td align="center"><strong>⑤ 构建会话</strong></td>
+<td>创建 SessionManager，准备写锁</td>
+<td><code>SessionManager</code></td>
+</tr>
+<tr>
+<td align="center"><strong>⑥ 事件订阅</strong></td>
+<td>订阅 pi 事件流，分离三路事件</td>
+<td><code>subscribeEmbeddedPiSession</code></td>
+</tr>
+<tr>
+<td align="center"><strong>⑦ 流式输出</strong></td>
+<td>assistant 增量 + tool start/update/end</td>
+<td>实时推送</td>
+</tr>
+<tr>
+<td align="center"><strong>⑧ 超时中止</strong></td>
+<td>超过 timeoutSeconds 强制中止</td>
+<td><code>agents.defaults.timeoutSeconds</code> 默认 600s</td>
+</tr>
+<tr>
+<td align="center"><strong>⑨ 返回负载</strong></td>
+<td>助手文本 + 工具摘要 + 错误文本 → routeReply</td>
+<td><code>payload</code></td>
+</tr>
+<tr>
+<td align="center"><strong>⑩ 用量元数据</strong></td>
+<td>provider、model、usage tokens</td>
+<td><code>meta</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="5-事件桥接-event-bridge">5. 事件桥接（Event Bridge）</h2><p>Pi 事件通过桥接机制映射为 OpenClaw 的三类流式事件：</p>
+<div class="mermaid">flowchart LR
+    subgraph Pi 事件["Pi Agent Core 事件"]
+        direction LR
+        P1["工具事件
+tool start/update/end"]:::pi
+        P2["助手增量
+text delta"]:::pi
+        P3["生命周期
+phase: start/end/error"]:::pi
+    end
+
+    subgraph 桥接层["subscribeEmbeddedPiSession"]
+        direction TB
+        BR["事件桥接器"]:::bridge
+    end
+
+    subgraph OpenClaw 流["OpenClaw Stream"]
+        direction LR
+        S1["stream: 'tool'"]:::oc
+        S2["stream: 'assistant'"]:::oc
+        S3["stream: 'lifecycle'"]:::oc
+    end
+
+    P1 --> BR --> S1
+    P2 --> BR --> S2
+    P3 --> BR --> S3
+
+    classDef pi fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+    classDef bridge fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef oc fill:#d1fae5,stroke:#10b981,color:#065f46</div><table>
+<thead>
+<tr>
+<th>Pi 事件</th>
+<th>OpenClaw 流</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>工具 start/update/end</strong></td>
+<td><code>stream: &quot;tool&quot;</code></td>
+<td>工具调用触发、进度更新、执行结束</td>
+</tr>
+<tr>
+<td><strong>文本 delta（增量）</strong></td>
+<td><code>stream: &quot;assistant&quot;</code></td>
+<td>LLM 回复的实时 Token 流</td>
+</tr>
+<tr>
+<td><strong>phase: start/end/error</strong></td>
+<td><code>stream: &quot;lifecycle&quot;</code></td>
+<td>生命周期的开始、结束、错误信号</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="6-auto-reply-决策流程">6. Auto-Reply 决策流程</h2><p>Auto-Reply 是消息到达 Agent Runner 之前的<strong>第一道决策闸门</strong>，决定消息是丢弃、重置还是继续执行：</p>
+<div class="mermaid">flowchart TB
+    MSG[入站消息]:::start
+    --> D1{用户消息?}
+    D1 -->|否| DROP["❌ 丢弃
+(非用户消息)"]:::drop
+    D1 -->|是| D2{match sendPolicy
+deny 规则?}
+
+    D2 -->|是| DROP
+    D2 -->|否| D3{match resetTriggers
+如 /new /reset?}
+
+    D3 -->|是| RESET["🔄 重置会话
+新 sessionId"]:::reset
+    D3 -->|否| D4{/send on/off
+运行时覆盖?}
+
+    D4 -->|"on / inherit"| EXEC["✅ 触发 Agent 执行"]:::exec
+    D4 -->|off| DROP
+
+    classDef start fill:#f1f5f9,stroke:#64748b,color:#1e293b
+    classDef drop fill:#fee2e2,stroke:#ef4444,color:#991b1b
+    classDef reset fill:#fce7f3,stroke:#ec4899,color:#9d174d
+    classDef exec fill:#d1fae5,stroke:#10b981,color:#065f46</div><table>
+<thead>
+<tr>
+<th>决策点</th>
+<th>判断依据</th>
+<th>通过则</th>
+<th>不通过则</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>用户消息?</strong></td>
+<td>消息来源类型</td>
+<td>进入下一步</td>
+<td>丢弃</td>
+</tr>
+<tr>
+<td><strong>sendPolicy deny?</strong></td>
+<td><code>sessions.sendPolicy.rules</code> 匹配</td>
+<td>丢弃</td>
+<td>进入下一步</td>
+</tr>
+<tr>
+<td><strong>resetTriggers?</strong></td>
+<td>匹配 <code>/new</code> <code>/reset</code> 等</td>
+<td>重置会话</td>
+<td>进入下一步</td>
+</tr>
+<tr>
+<td><strong>/send on/off?</strong></td>
+<td>会话级运行时覆盖</td>
+<td>on → 执行 / off → 丢弃</td>
+<td>执行</td>
+</tr>
+</tbody></table>
+<hr>
+<blockquote>
+<p><strong>相关模块</strong>：<a href="02-concurrency-control.md">02 - 队列与并发控制</a> · <a href="03-streaming-events.md">03 - 流式输出与事件机制</a> · <a href="04-timeout-lifecycle.md">04 - 超时与生命周期</a> · <a href="../02-gateway-control/01-gateway-positioning.md.html">01 - Gateway 定位与职责</a> · <a href="../02-gateway-control/02-config-system.md.html">02 - 配置系统与热重载</a></p>
+</blockquote>
+<div class="nav"><a href="/02-gateway-control/04-cli-command-system.html" class="nav-prev">‹ 04 CLI 层与命令系统</a><a href="/03-execution-engine/02-concurrency-control.html" class="nav-next">02 队列与并发控制 ›</a></div>
+      </article>
+    </main>
+  </div>
+  
+  <script>
+    // Collapsible sidebar sections
+    document.querySelectorAll('.sidebar-section-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const items = header.nextElementSibling;
+        const isOpen = items.classList.contains('open');
+        document.querySelectorAll('.sidebar-section-items').forEach(el => el.classList.remove('open'));
+        document.querySelectorAll('.sidebar-section-header').forEach(el => el.classList.remove('open'));
+        if (!isOpen) {
+          items.classList.add('open');
+          header.classList.add('open');
+        }
+      });
+    });
+    
+    // Auto-open current page's section
+    const currentPath = window.location.pathname;
+    // Extract just the filename from pathname for comparison
+    const currentFilename = currentPath.split('/').pop();
+    document.querySelectorAll('.sidebar-section-items a').forEach(link => {
+      const href = link.getAttribute('href');
+      // Extract filename from href (strips ./ or ../ prefixes)
+      const linkFilename = href.split('/').pop();
+      if (linkFilename === currentFilename) {
+        link.classList.add('active');
+        const section = link.closest('.sidebar-section-items');
+        const header = section ? section.previousElementSibling : null;
+        if (section) section.classList.add('open');
+        if (header) header.classList.add('open');
+      }
+    });
+    
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        document.querySelectorAll('.sidebar-section-items a').forEach(link => {
+          const text = link.textContent.toLowerCase();
+          const li = link.closest('li');
+          li.style.display = (query === '' || text.includes(query)) ? '' : 'none';
+        });
+        document.querySelectorAll('.sidebar-section-items').forEach(section => {
+          const hasVisible = section.querySelectorAll('li:not([style*="display: none"])').length > 0;
+          const header = section.previousElementSibling;
+          if (hasVisible || query === '') {
+            section.classList.add('open');
+            header.classList.add('open');
+          }
+        });
+      });
+    }
+    
+    // Mermaid: Optimized async loading with lazy render
+    (function() {
+      const mermaidDivs = document.querySelectorAll('.mermaid');
+      if (mermaidDivs.length === 0) return;
+
+      // Save original chart definitions and show loading indicator
+      const chartData = [];
+      mermaidDivs.forEach((div, i) => {
+        chartData[i] = div.innerHTML;
+        div.innerHTML = '<div class="mermaid-loading" style="background:#f8fafc;border:1px dashed #e2e8f0;border-radius:12px;padding:24px;margin:20px 0;text-align:center;color:#64748b;">📊 图表加载中...</div>';
+      });
+
+      // CDN sources - try local first, then CDN with compatible version
+      const sources = [
+        '/lib/mermaid.min.js',
+        'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js',
+        'https://unpkg.com/mermaid@11/dist/mermaid.min.js'
+      ];
+      let sourceIndex = 0;
+      let mermaidLoaded = false;
+
+      function showError(msg) {
+        mermaidDivs.forEach((div, i) => {
+          const original = chartData[i];
+          div.innerHTML = '<details style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:20px 0;">'
+            + '<summary style="color:#dc2626;cursor:pointer;font-weight:500;">❌ ' + msg + '</summary>'
+            + '<pre style="margin-top:12px;padding:12px;background:#1e293b;color:#e2e8f0;border-radius:8px;overflow-x:auto;font-size:13px;">'
+            + original.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            + '</pre></details>';
+          div.classList.add('rendered');
+        });
+      }
+
+      function renderMermaid() {
+        if (mermaidLoaded) return;
+        mermaidLoaded = true;
+        try {
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+              primaryColor: '#3b82f6',
+              primaryTextColor: '#1e293b',
+              primaryBorderColor: '#3b82f6',
+              lineColor: '#64748b',
+              secondaryColor: '#f1f5f9',
+              tertiaryColor: '#f8fafc',
+            },
+            securityLevel: 'loose',
+            flowchart: { curve: 'basis', padding: 15, nodeSpacing: 50, rankSpacing: 80 },
+            maxTextSize: 50000,
+          });
+
+          function renderOne(div, i) {
+            // Restore original chart definition before rendering
+            div.innerHTML = chartData[i] || '';
+            // Remove any trailing <br> that marked may insert
+            div.innerHTML = div.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+            mermaid.run({ nodes: [div] }).then(function() {
+              div.classList.add('rendered');
+            }).catch(function(e) {
+              div.innerHTML = '<details style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:20px 0;">'
+                + '<summary style="color:#dc2626;cursor:pointer;font-weight:500;">❌ 渲染失败</summary>'
+                + '<pre style="margin-top:12px;padding:12px;background:#1e293b;color:#e2e8f0;border-radius:8px;overflow-x:auto;font-size:13px;">'
+                + (chartData[i] || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                + '</pre></details>';
+              div.classList.add('rendered');
+            });
+          }
+
+          // Lazy render using IntersectionObserver
+          if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver(function(entries) {
+              entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                  var idx = Array.prototype.indexOf.call(mermaidDivs, entry.target);
+                  renderOne(entry.target, idx);
+                  observer.unobserve(entry.target);
+                }
+              });
+            }, { rootMargin: '200px' });
+            Array.prototype.forEach.call(mermaidDivs, function(div, i) {
+              observer.observe(div);
+            });
+          } else {
+            // Fallback: render all immediately
+            Array.prototype.forEach.call(mermaidDivs, function(div, i) {
+              renderOne(div, i);
+            });
+          }
+        } catch(e) {
+          showError('图表渲染失败');
+        }
+      }
+
+      function tryLoadMermaid() {
+        if (sourceIndex >= sources.length) {
+          showError('无法加载图表库');
+          return;
+        }
+        var script = document.createElement('script');
+        script.src = sources[sourceIndex];
+        script.async = true;
+        script.onload = function() {
+          if (typeof mermaid === 'undefined') {
+            sourceIndex++;
+            tryLoadMermaid();
+            return;
+          }
+          renderMermaid();
+        };
+        script.onerror = function() {
+          sourceIndex++;
+          tryLoadMermaid();
+        };
+        document.head.appendChild(script);
+      }
+
+      if (document.readyState === 'complete') {
+        setTimeout(tryLoadMermaid, 100);
+      } else {
+        window.addEventListener('load', function() { setTimeout(tryLoadMermaid, 100); });
+      }
+    })();
+  </script>
+</body>
+</html>

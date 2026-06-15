@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>03 · WebSocket 协议层</title>
+  <style>
+    /* ===== Reset & Base ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 62.5%; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      font-size: 15px;
+      color: #1e293b;
+      line-height: 1.7;
+      background: #ffffff;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    /* ===== Layout ===== */
+    .app {
+      display: flex;
+      min-height: 100vh;
+    }
+    
+    /* ===== Sidebar ===== */
+        .sidebar {
+      width: 300px;
+      min-width: 300px;
+      background: linear-gradient(180deg, #fafbfc 0%, #f4f6f8 100%);
+      border-right: 1px solid #e8ebed;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .sidebar::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    .sidebar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .sidebar::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 4px;
+    }
+    
+    .sidebar::-webkit-scrollbar-thumb:hover {
+      background: #9ca3af;
+    }
+    
+    .sidebar-header {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid #e8ebed;
+    }
+    
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #111827;
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    
+    .sidebar-brand .icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+    
+    .sidebar-search {
+      padding: 16px 20px;
+    }
+    
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px 14px;
+      transition: all 0.2s ease;
+    }
+    
+    .search-box:focus-within {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+    
+    .search-box input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 13px;
+      color: #374151;
+      background: transparent;
+    }
+    
+    .search-box input::placeholder {
+      color: #9ca3af;
+    }
+    
+    .search-box svg {
+      width: 16px;
+      height: 16px;
+      color: #9ca3af;
+    }
+    
+    .sidebar-nav {
+      flex: 1;
+      padding: 12px 10px;
+      overflow-y: auto;
+    }
+    
+    .sidebar-nav ul, .sidebar-nav li {
+      list-style: none;
+    }
+    
+    .sidebar-section {
+      margin-bottom: 6px;
+    }
+    
+    .sidebar-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 12px;
+      margin: 0 2px;
+      transition: all 0.2s ease;
+    }
+    
+    .sidebar-section-header:hover {
+      background: rgba(59, 130, 246, 0.07);
+    }
+    
+    .sidebar-section-header.open {
+      background: rgba(59, 130, 246, 0.1);
+    }
+    
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .section-num {
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
+    }
+    
+    .section-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    
+    .sidebar-section-header .arrow {
+      width: 18px;
+      height: 18px;
+      color: #9ca3af;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .sidebar-section-header:hover .arrow {
+      color: #6b7280;
+    }
+    
+    .sidebar-section-header.open .arrow {
+      transform: rotate(90deg);
+      color: #3b82f6;
+    }
+    
+    .sidebar-section-items {
+      display: none;
+      animation: slideDown 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .sidebar-section-items.open {
+      display: block;
+    }
+    
+    .sidebar-section-items ul {
+      padding: 6px 6px 10px;
+    }
+    
+    .sidebar-section-items li {
+      margin: 3px 0;
+    }
+    
+    .sidebar-section-items li.level-2 {
+      padding-left: 14px;
+    }
+    
+    .sidebar-section-items li.level-3 {
+      padding-left: 28px;
+    }
+    
+    .sidebar-section-items a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      font-size: 13px;
+      color: #6b7280;
+      text-decoration: none;
+      border-radius: 10px;
+      border-left: 2px solid transparent;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+    
+    .sidebar-section-items a:hover {
+      color: #3b82f6;
+      background: rgba(59, 130, 246, 0.06);
+      border-left-color: rgba(59, 130, 246, 0.3);
+    }
+    
+    .sidebar-section-items a.active {
+      color: #2563eb;
+      background: linear-gradient(90deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.06) 100%);
+      font-weight: 500;
+      border-left-color: #3b82f6;
+    }
+    
+    .sidebar-section-items a.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 20px;
+      background: linear-gradient(180deg, #3b82f6 0%, #6366f1 100%);
+      border-radius: 0 3px 3px 0;
+    }
+    
+    .sidebar-section-items a .num {
+      font-size: 11px;
+      font-weight: 500;
+      color: #9ca3af;
+      min-width: 28px;
+      padding: 2px 6px;
+      background: #f3f4f6;
+      border-radius: 4px;
+      text-align: center;
+    }
+    
+    .sidebar-section-items a:hover .num {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+    }
+    
+    .sidebar-section-items a.active .num {
+      background: rgba(59, 130, 246, 0.15);
+      color: #2563eb;
+    }
+    
+    .sidebar-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
+      margin: 10px 14px 14px;
+    }
+    
+    .sidebar-external {
+      padding: 0 12px 20px;
+    }
+    
+    .sidebar-external a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6b7280;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    
+    .sidebar-external a:hover {
+      color: #3b82f6;
+      border-color: #3b82f6;
+      background: #f0f7ff;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+    }
+    
+    .sidebar-external a svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    /* ===== Content ===== */
+    .content {
+      flex: 1;
+      margin-left: 300px;
+      padding: 48px 72px;
+      min-height: 100vh;
+      background: #ffffff;
+    }
+    
+    /* ===== Table of Contents ===== */
+    .toc {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 24px 0 32px;
+    }
+    .toc-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e293b;
+      margin: 0 0 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .toc-item {
+      padding: 6px 0;
+    }
+    .toc-item a {
+      color: #475569;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      display: block;
+    }
+    .toc-item a:hover {
+      color: #3b82f6;
+      padding-left: 6px;
+    }
+    .toc-h2 {
+      font-size: 14px;
+      font-weight: 500;
+      border-bottom: 1px solid #f1f5f9;
+      margin-bottom: 4px;
+    }
+    .toc-h2:last-child {
+      border-bottom: none;
+    }
+    .toc-h3 {
+      padding-left: 16px;
+      font-size: 13px;
+    }
+    .toc-h3 a::before {
+      content: "·";
+      margin-right: 8px;
+      color: #94a3b8;
+    }
+    
+    .markdown-section {
+      max-width: 1200px;
+    }
+    
+    /* ===== Typography ===== */
+    .markdown-section h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #111827;
+      letter-spacing: -0.025em;
+      margin: 0 0 28px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #e5e7eb;
+      line-height: 1.3;
+    }
+    
+    .markdown-section h2 {
+      font-size: 22px;
+      font-weight: 650;
+      color: #1f2937;
+      letter-spacing: -0.015em;
+      margin: 48px 0 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .markdown-section h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: #2563eb;
+      margin: 32px 0 14px;
+      padding-left: 12px;
+      border-left: 3px solid #3b82f6;
+    }
+    
+    .markdown-section h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #374151;
+      margin: 24px 0 10px;
+    }
+    
+    .markdown-section p {
+      margin: 14px 0;
+      color: #4b5563;
+      line-height: 1.75;
+      font-size: 14.5px;
+    }
+    
+    .markdown-section a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 500;
+      border-bottom: 1px solid transparent;
+      transition: all 0.15s ease;
+    }
+    
+    .markdown-section a:hover {
+      color: #1d4ed8;
+      border-bottom-color: #2563eb;
+    }
+    
+    .markdown-section code {
+      background: #f3f4f6;
+      color: #dc2626;
+      padding: 3px 7px;
+      font-size: 13px;
+      border-radius: 5px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Consolas', monospace;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .markdown-section pre {
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 24px 28px;
+      overflow-x: auto;
+      margin: 24px 0;
+      border: 1px solid #334155;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    .markdown-section pre code {
+      background: transparent;
+      color: #e2e8f0;
+      padding: 0;
+      font-size: 13.5px;
+      line-height: 1.7;
+      border: none;
+    }
+    
+    .markdown-section blockquote {
+      background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+      border-left: 4px solid #3b82f6;
+      border-radius: 0 12px 12px 0;
+      padding: 18px 24px;
+      margin: 24px 0;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08);
+    }
+    
+    .markdown-section blockquote p {
+      margin: 0;
+      color: #374151;
+      line-height: 1.7;
+    }
+    
+    .markdown-section table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 24px 0;
+      font-size: 14px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .markdown-section table th {
+      background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+      font-weight: 600;
+      text-align: left;
+      padding: 14px 18px;
+      color: #374151;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .markdown-section table td {
+      padding: 13px 18px;
+      border-top: 1px solid #f3f4f6;
+      color: #4b5563;
+    }
+    
+    .markdown-section table tr:nth-child(2n) td {
+      background: #fafafa;
+    }
+    
+    .markdown-section table tr:hover td {
+      background: #f0f9ff;
+    }
+    
+    .markdown-section ul, .markdown-section ol {
+      padding-left: 26px;
+      margin: 14px 0;
+    }
+    
+    .markdown-section li {
+      margin: 8px 0;
+      color: #4b5563;
+      line-height: 1.7;
+    }
+    
+    .markdown-section li::marker {
+      color: #3b82f6;
+    }
+    
+    .markdown-section hr {
+      height: 2px;
+      background: linear-gradient(90deg, #e5e7eb, #f3f4f6, #e5e7eb);
+      border: none;
+      margin: 40px 0;
+    }
+    
+    .markdown-section img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    /* ===== Mermaid Diagrams ===== */
+    /* ===== Mermaid Diagrams ===== */
+    .mermaid {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+      overflow-x: auto;
+      border: 1px solid #e2e8f0;
+      display: block;
+    }
+    .mermaid.rendered {
+      display: block;
+    }
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+    .mermaid svg text {
+      fill: #1e293b !important;
+    }
+    .mermaid-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 16px;
+      color: #dc2626;
+      margin: 20px 0;
+    }
+    .mermaid-loading {
+      background: #f8fafc;
+      border: 1px dashed #e2e8f0;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+      color: #64748b;
+      text-align: center;
+    }
+    
+    /* ===== Navigation ===== */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+    }
+    
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      color: #475569;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+    
+    .nav a:hover {
+      background: #3b82f6;
+      color: #fff;
+      border-color: #3b82f6;
+    }
+    
+    /* ===== Mobile ===== */
+    @media (max-width: 1024px) {
+      .sidebar { transform: translateX(-100%); transition: transform 0.2s ease; }
+      .sidebar.open { transform: translateX(0); }
+      .content { margin-left: 0; padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <a href="/index.html" class="sidebar-brand">
+          <span class="icon">📚</span>
+          OpenClaw Agent 源码学习
+        </a>
+      </div>
+      
+      <div class="sidebar-search">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input type="text" placeholder="搜索文档..." id="searchInput">
+        </div>
+      </div>
+      
+      <div class="sidebar-nav">
+        <div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">01</span>
+            <span class="section-name">系统架构基础</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/01-architecture/01-layered-architecture.html"><span class="num">01</span>分层架构全景</a></li><li><a href="/01-architecture/02-core-concepts.html"><span class="num">02</span>核心概念模型</a></li><li><a href="/01-architecture/03-core-source-index.html"><span class="num">03</span>核心源码索引</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">02</span>
+            <span class="section-name">网关与控制平面</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/02-gateway-control/01-gateway-positioning.html"><span class="num">01</span>Gateway 定位与职责</a></li><li><a href="/02-gateway-control/02-config-system.html"><span class="num">02</span>配置系统与热重载</a></li><li><a href="/02-gateway-control/03-websocket-protocol.html"><span class="num">03</span>WebSocket 协议层</a></li><li><a href="/02-gateway-control/04-cli-command-system.html"><span class="num">04</span>CLI 层与命令系统</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">03</span>
+            <span class="section-name">智能体执行引擎</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/03-execution-engine/01-agent-loop-workflow.html"><span class="num">01</span>Agent Loop 工作流</a></li><li><a href="/03-execution-engine/02-concurrency-control.html"><span class="num">02</span>队列与并发控制</a></li><li><a href="/03-execution-engine/03-streaming-events.html"><span class="num">03</span>流式输出与事件机制</a></li><li><a href="/03-execution-engine/04-timeout-lifecycle.html"><span class="num">04</span>超时与生命周期</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">04</span>
+            <span class="section-name">路由与会话管理</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/04-routing-session/01-routing-engine.html"><span class="num">01</span>路由层与 Session Key</a></li><li><a href="/04-routing-session/02-session-lifecycle.html"><span class="num">02</span>会话生命周期与重置</a></li><li><a href="/04-routing-session/03-session-tools.html"><span class="num">03</span>会话工具与子智能体</a></li><li><a href="/04-routing-session/04-channels-nodes.html"><span class="num">04</span>通道与节点架构</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">05</span>
+            <span class="section-name">上下文工程</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/05-context-engineering/01-context-window.html"><span class="num">01</span>上下文窗口管理</a></li><li><a href="/05-context-engineering/02-context-engine.html"><span class="num">02</span>上下文引擎</a></li><li><a href="/05-context-engineering/03-compaction-pruning.html"><span class="num">03</span>压缩与修剪</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">06</span>
+            <span class="section-name">记忆系统</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/06-memory-systems/01-memory-storage-layer.html"><span class="num">01</span>记忆存储层</a></li><li><a href="/06-memory-systems/02-active-retrieval.html"><span class="num">02</span>主动检索层</a></li><li><a href="/06-memory-systems/03-consolidation-backends.html"><span class="num">03</span>后台整理层</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">07</span>
+            <span class="section-name">工具与安全系统</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/07-tools-safety/01-tool-system.html"><span class="num">01</span>工具系统架构</a></li><li><a href="/07-tools-safety/02-permission-approval.html"><span class="num">02</span>权限模式与审批</a></li><li><a href="/07-tools-safety/03-safety-strategy.html"><span class="num">03</span>安全策略配置</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">08</span>
+            <span class="section-name">Provider 与模型管理</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/08-provider-models/01-provider-adapters.html"><span class="num">01</span>Provider 适配层</a></li><li><a href="/08-provider-models/02-model-failover.html"><span class="num">02</span>模型故障转移</a></li><li><a href="/08-provider-models/03-auth-cooldown.html"><span class="num">03</span>认证管理</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">09</span>
+            <span class="section-name">扩展机制</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/09-extensions/01-plugin-system.html"><span class="num">01</span>插件系统</a></li><li><a href="/09-extensions/02-hooks-system.html"><span class="num">02</span>钩子系统</a></li><li><a href="/09-extensions/03-multi-agent-routing.html"><span class="num">03</span>多智能体路由</a></li><li><a href="/09-extensions/04-parallel-lanes.html"><span class="num">04</span>并行专家通道</a></li><li><a href="/09-extensions/05-workspace-config.html"><span class="num">05</span>工作区配置</a></li></ul></div></div>
+      </div>
+      
+      <div class="sidebar-external">
+        <a href="https://github.com/Hyper66666/claude-code-sourcemap" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+          GitHub 源码
+        </a>
+      </div>
+    </nav>
+    <main class="content">
+      <article class="markdown-section">
+        <h1 id="03-websocket-协议层">03 · WebSocket 协议层</h1><blockquote>
+<p><strong>学习要点</strong></p>
+<ul>
+<li>WebSocket 协议层的 4 层结构如何划分？每层的源码文件在哪里？</li>
+<li>&quot;三层总闸&quot;分别是什么？如何层层递进保障系统安全？</li>
+<li>一次完整的协议校验流程是怎样的？</li>
+<li>六类广播事件分别由谁触发、谁消费？</li>
+</ul>
+</blockquote>
+<hr>
+<h2 id="1-四层结构">1. 四层结构</h2><p>WebSocket 协议层是 Gateway 的<strong>连接中枢</strong>，所有与客户端的长连接通信都经过这四层处理：</p>
+<div class="mermaid">flowchart TB
+    subgraph L1["① 连接层 — Connection Layer"]
+        direction TB
+        C1["ws-connection.ts
+WebSocket 连接管理"]
+        C2["message-handler.ts
+10s 握手超时保护"]
+    end
+
+    subgraph L2["② 协议层 — Protocol Layer"]
+        direction TB
+        P1["protocol/index.ts
+AJV 帧结构校验"]
+        P2["统一错误码体系"]
+    end
+
+    subgraph L3["③ 方法层 — Method Layer"]
+        direction TB
+        M1["server-methods.ts
+authorizeGatewayMethod"]
+        M2["role + scope 检查"]
+    end
+
+    subgraph L4["④ 事件层 — Event Layer"]
+        direction TB
+        E1["server-broadcast.ts
+事件广播"]
+        E2["server-chat.ts
+聊天事件"]
+        E3["慢消费者丢弃 + 幂等缓存"]
+    end
+
+    L1 -->|"握手成功"| L2
+    L2 -->|"帧校验通过"| L3
+    L3 -->|"方法分发"| L4</div><h3 id="各层职责">各层职责</h3><table>
+<thead>
+<tr>
+<th align="center">层级</th>
+<th>源码文件</th>
+<th>核心职责</th>
+<th>关键机制</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>① 连接层</strong></td>
+<td><code>ws-connection.ts</code></td>
+<td>WebSocket 连接建立与生命周期管理</td>
+<td>10s 握手超时保护，超时自动断开</td>
+</tr>
+<tr>
+<td align="center"><strong>② 协议层</strong></td>
+<td><code>protocol/index.ts</code></td>
+<td>帧结构格式校验与解析</td>
+<td>AJV JSON Schema 校验 + 统一错误码</td>
+</tr>
+<tr>
+<td align="center"><strong>③ 方法层</strong></td>
+<td><code>server-methods.ts</code></td>
+<td>方法分发 + 权限鉴权</td>
+<td>role + scope 双维度检查</td>
+</tr>
+<tr>
+<td align="center"><strong>④ 事件层</strong></td>
+<td><code>server-broadcast.ts</code></td>
+<td>事件广播与推送</td>
+<td>慢消费者丢弃 + 幂等缓存去重</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="2-三层总闸">2. 三层总闸</h2><p>在请求进入四层处理之前，OpenClaw 设置了<strong>三道总闸</strong>进行安全过滤：</p>
+<div class="mermaid">flowchart TB
+    subgraph 三道总闸
+        direction TB
+        G1["🔒 连接总闸
+message-handler.ts"]:::gate1
+        G2["🔑 权限总闸
+authorizeGatewayMethod"]:::gate2
+        G3["📊 带宽总闸
+MAX_PAYLOAD_BYTES"]:::gate3
+    end
+
+    subgraph 安全效果
+        direction TB
+        E1["握手必须成功
+否则关闭 WS 连接"]:::effect
+        E2["role/scope 检查
+不符合直接拒绝"]:::effect
+        E3["单连接负载限制
+防止系统被拖垮"]:::effect
+    end
+
+    G1 --> E1
+    G2 --> E2
+    G3 --> E3
+
+    classDef gate1 fill:#fee2e2,stroke:#ef4444,color:#991b1b
+    classDef gate2 fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef gate3 fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+    classDef effect fill:#f1f5f9,stroke:#64748b,color:#1e293b</div><table>
+<thead>
+<tr>
+<th>总闸</th>
+<th>源码位置</th>
+<th>检查方式</th>
+<th>失败后果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>连接总闸</strong></td>
+<td><code>message-handler.ts</code></td>
+<td>握手必须在 10s 内完成</td>
+<td>直接关闭 WS 连接</td>
+</tr>
+<tr>
+<td><strong>权限总闸</strong></td>
+<td><code>authorizeGatewayMethod</code></td>
+<td>每次方法调用检查 role + scope</td>
+<td>拒绝并返回错误码</td>
+</tr>
+<tr>
+<td><strong>带宽总闸</strong></td>
+<td><code>MAX_PAYLOAD_BYTES</code></td>
+<td>单连接负载上限检查</td>
+<td>拒绝超限请求</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>三道闸门层层递进、互不绕过，任何一道未通过则请求直接被拒绝。</p>
+</blockquote>
+<hr>
+<h2 id="3-协议校验流程">3. 协议校验流程</h2><p>一次完整的 WebSocket 通信从建立连接到方法调用，经历以下校验流程：</p>
+<div class="mermaid">sequenceDiagram
+    participant C as Client
+    participant WS as WebSocket
+    participant GW as Gateway
+    participant PH as Protocol Handler
+    participant MH as Message Handler
+    participant BC as Broadcast
+
+    Note over C,BC: 第一步：建立连接
+    C->>WS: 发起 WebSocket 连接
+    WS->>GW: 连接事件
+    GW->>GW: ① 连接总闸检查
+    alt 握手通过
+        GW-->>WS: 握手成功
+    else 超时/拒绝
+        GW-->>WS: 关闭连接
+    end
+
+    Note over C,BC: 第二步：消息通信
+    C->>WS: 发送消息帧
+    WS->>GW: 消息事件
+    GW->>PH: 协议帧校验
+    PH->>PH: ② AJV Schema 校验
+    alt 校验通过
+        PH->>GW: 校验通过
+        GW->>GW: ③ 权限总闸检查
+        alt 鉴权通过
+            GW->>MH: 转发到方法处理器
+            MH-->>GW: 处理结果
+            opt 需要广播
+                GW->>BC: 触发事件广播
+            end
+            GW-->>WS: 响应帧
+            WS-->>C: 响应
+        else 鉴权失败
+            GW-->>WS: 权限错误码
+        end
+    else 校验失败
+        GW-->>WS: 格式错误码
+    end</div><h3 id="校验流程要点">校验流程要点</h3><table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>检查点</th>
+<th>通过条件</th>
+<th>失败处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>连接建立</strong></td>
+<td>握手挑战</td>
+<td>10s 内完成挑战响应</td>
+<td>关闭连接</td>
+</tr>
+<tr>
+<td><strong>帧校验</strong></td>
+<td>AJV Schema</td>
+<td>JSON 结构完全匹配</td>
+<td>返回统一格式错误码</td>
+</tr>
+<tr>
+<td><strong>权限检查</strong></td>
+<td>role + scope</td>
+<td>角色有权限 + 作用域匹配</td>
+<td>返回权限错误码</td>
+</tr>
+<tr>
+<td><strong>带宽检查</strong></td>
+<td>负载大小</td>
+<td>不超过 MAX_PAYLOAD_BYTES</td>
+<td>拒绝超限请求</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="4-帧协议格式">4. 帧协议格式</h2><p>OpenClaw WebSocket 帧使用 JSON 格式，基本结构如下：</p>
+<pre><code class="language-json">{
+  "type": "method_call" | "method_response" | "event" | "error",
+  "method": "agent.run" | "agent.wait" | "sessions.list" | "...",
+  "params": { },
+  "id": "request-id-123"
+}</code></pre><table>
+<thead>
+<tr>
+<th>帧类型</th>
+<th>方向</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>method_call</code></td>
+<td>Client → Gateway</td>
+<td>调用一个 Gateway 方法</td>
+</tr>
+<tr>
+<td><code>method_response</code></td>
+<td>Gateway → Client</td>
+<td>方法调用的返回结果</td>
+</tr>
+<tr>
+<td><code>event</code></td>
+<td>Gateway → Client</td>
+<td>服务端主动推送的事件</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td>双向</td>
+<td>错误信息</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="5-关键源码文件">5. 关键源码文件</h2><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>src/gateway/server/ws-connection.ts</code></td>
+<td>WebSocket 连接管理：握手、心跳、重连</td>
+</tr>
+<tr>
+<td><code>src/gateway/server/message-handler.ts</code></td>
+<td>消息处理 + 握手超时保护</td>
+</tr>
+<tr>
+<td><code>src/gateway/protocol/index.ts</code></td>
+<td>帧结构定义 + AJV Schema 校验</td>
+</tr>
+<tr>
+<td><code>src/gateway/server-methods.ts</code></td>
+<td>方法分发 + authorizeGatewayMethod 鉴权</td>
+</tr>
+<tr>
+<td><code>src/gateway/server-broadcast.ts</code></td>
+<td>事件广播：慢消费者丢弃、幂等缓存</td>
+</tr>
+<tr>
+<td><code>src/gateway/server-chat.ts</code></td>
+<td>聊天事件处理</td>
+</tr>
+<tr>
+<td><code>src/gateway/auth.ts</code></td>
+<td>连接认证 Token 验证</td>
+</tr>
+</tbody></table>
+<hr>
+<blockquote>
+<p><strong>相关模块</strong>：<a href="01-gateway-positioning.md">01 - Gateway 定位与职责</a> · <a href="02-config-system.md">02 - 配置系统与热重载</a> · <a href="04-cli-command-system.md">04 - CLI 层与命令系统</a> · <a href="../01-architecture/01-layered-architecture.md.html">01 - 架构全景</a></p>
+</blockquote>
+<div class="nav"><a href="/02-gateway-control/02-config-system.html" class="nav-prev">‹ 02 配置系统与热重载</a><a href="/02-gateway-control/04-cli-command-system.html" class="nav-next">04 CLI 层与命令系统 ›</a></div>
+      </article>
+    </main>
+  </div>
+  
+  <script>
+    // Collapsible sidebar sections
+    document.querySelectorAll('.sidebar-section-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const items = header.nextElementSibling;
+        const isOpen = items.classList.contains('open');
+        document.querySelectorAll('.sidebar-section-items').forEach(el => el.classList.remove('open'));
+        document.querySelectorAll('.sidebar-section-header').forEach(el => el.classList.remove('open'));
+        if (!isOpen) {
+          items.classList.add('open');
+          header.classList.add('open');
+        }
+      });
+    });
+    
+    // Auto-open current page's section
+    const currentPath = window.location.pathname;
+    // Extract just the filename from pathname for comparison
+    const currentFilename = currentPath.split('/').pop();
+    document.querySelectorAll('.sidebar-section-items a').forEach(link => {
+      const href = link.getAttribute('href');
+      // Extract filename from href (strips ./ or ../ prefixes)
+      const linkFilename = href.split('/').pop();
+      if (linkFilename === currentFilename) {
+        link.classList.add('active');
+        const section = link.closest('.sidebar-section-items');
+        const header = section ? section.previousElementSibling : null;
+        if (section) section.classList.add('open');
+        if (header) header.classList.add('open');
+      }
+    });
+    
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        document.querySelectorAll('.sidebar-section-items a').forEach(link => {
+          const text = link.textContent.toLowerCase();
+          const li = link.closest('li');
+          li.style.display = (query === '' || text.includes(query)) ? '' : 'none';
+        });
+        document.querySelectorAll('.sidebar-section-items').forEach(section => {
+          const hasVisible = section.querySelectorAll('li:not([style*="display: none"])').length > 0;
+          const header = section.previousElementSibling;
+          if (hasVisible || query === '') {
+            section.classList.add('open');
+            header.classList.add('open');
+          }
+        });
+      });
+    }
+    
+    // Mermaid: Optimized async loading with lazy render
+    (function() {
+      const mermaidDivs = document.querySelectorAll('.mermaid');
+      if (mermaidDivs.length === 0) return;
+
+      // Save original chart definitions and show loading indicator
+      const chartData = [];
+      mermaidDivs.forEach((div, i) => {
+        chartData[i] = div.innerHTML;
+        div.innerHTML = '<div class="mermaid-loading" style="background:#f8fafc;border:1px dashed #e2e8f0;border-radius:12px;padding:24px;margin:20px 0;text-align:center;color:#64748b;">📊 图表加载中...</div>';
+      });
+
+      // CDN sources - try local first, then CDN with compatible version
+      const sources = [
+        '/lib/mermaid.min.js',
+        'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js',
+        'https://unpkg.com/mermaid@11/dist/mermaid.min.js'
+      ];
+      let sourceIndex = 0;
+      let mermaidLoaded = false;
+
+      function showError(msg) {
+        mermaidDivs.forEach((div, i) => {
+          const original = chartData[i];
+          div.innerHTML = '<details style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:20px 0;">'
+            + '<summary style="color:#dc2626;cursor:pointer;font-weight:500;">❌ ' + msg + '</summary>'
+            + '<pre style="margin-top:12px;padding:12px;background:#1e293b;color:#e2e8f0;border-radius:8px;overflow-x:auto;font-size:13px;">'
+            + original.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            + '</pre></details>';
+          div.classList.add('rendered');
+        });
+      }
+
+      function renderMermaid() {
+        if (mermaidLoaded) return;
+        mermaidLoaded = true;
+        try {
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+              primaryColor: '#3b82f6',
+              primaryTextColor: '#1e293b',
+              primaryBorderColor: '#3b82f6',
+              lineColor: '#64748b',
+              secondaryColor: '#f1f5f9',
+              tertiaryColor: '#f8fafc',
+            },
+            securityLevel: 'loose',
+            flowchart: { curve: 'basis', padding: 15, nodeSpacing: 50, rankSpacing: 80 },
+            maxTextSize: 50000,
+          });
+
+          function renderOne(div, i) {
+            // Restore original chart definition before rendering
+            div.innerHTML = chartData[i] || '';
+            // Remove any trailing <br> that marked may insert
+            div.innerHTML = div.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+            mermaid.run({ nodes: [div] }).then(function() {
+              div.classList.add('rendered');
+            }).catch(function(e) {
+              div.innerHTML = '<details style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:20px 0;">'
+                + '<summary style="color:#dc2626;cursor:pointer;font-weight:500;">❌ 渲染失败</summary>'
+                + '<pre style="margin-top:12px;padding:12px;background:#1e293b;color:#e2e8f0;border-radius:8px;overflow-x:auto;font-size:13px;">'
+                + (chartData[i] || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                + '</pre></details>';
+              div.classList.add('rendered');
+            });
+          }
+
+          // Lazy render using IntersectionObserver
+          if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver(function(entries) {
+              entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                  var idx = Array.prototype.indexOf.call(mermaidDivs, entry.target);
+                  renderOne(entry.target, idx);
+                  observer.unobserve(entry.target);
+                }
+              });
+            }, { rootMargin: '200px' });
+            Array.prototype.forEach.call(mermaidDivs, function(div, i) {
+              observer.observe(div);
+            });
+          } else {
+            // Fallback: render all immediately
+            Array.prototype.forEach.call(mermaidDivs, function(div, i) {
+              renderOne(div, i);
+            });
+          }
+        } catch(e) {
+          showError('图表渲染失败');
+        }
+      }
+
+      function tryLoadMermaid() {
+        if (sourceIndex >= sources.length) {
+          showError('无法加载图表库');
+          return;
+        }
+        var script = document.createElement('script');
+        script.src = sources[sourceIndex];
+        script.async = true;
+        script.onload = function() {
+          if (typeof mermaid === 'undefined') {
+            sourceIndex++;
+            tryLoadMermaid();
+            return;
+          }
+          renderMermaid();
+        };
+        script.onerror = function() {
+          sourceIndex++;
+          tryLoadMermaid();
+        };
+        document.head.appendChild(script);
+      }
+
+      if (document.readyState === 'complete') {
+        setTimeout(tryLoadMermaid, 100);
+      } else {
+        window.addEventListener('load', function() { setTimeout(tryLoadMermaid, 100); });
+      }
+    })();
+  </script>
+</body>
+</html>

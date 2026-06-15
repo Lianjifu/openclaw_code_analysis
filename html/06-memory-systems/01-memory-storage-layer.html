@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>01 · 记忆存储层</title>
+  <style>
+    /* ===== Reset & Base ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 62.5%; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      font-size: 15px;
+      color: #1e293b;
+      line-height: 1.7;
+      background: #ffffff;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    /* ===== Layout ===== */
+    .app {
+      display: flex;
+      min-height: 100vh;
+    }
+    
+    /* ===== Sidebar ===== */
+        .sidebar {
+      width: 300px;
+      min-width: 300px;
+      background: linear-gradient(180deg, #fafbfc 0%, #f4f6f8 100%);
+      border-right: 1px solid #e8ebed;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .sidebar::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    .sidebar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .sidebar::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 4px;
+    }
+    
+    .sidebar::-webkit-scrollbar-thumb:hover {
+      background: #9ca3af;
+    }
+    
+    .sidebar-header {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid #e8ebed;
+    }
+    
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #111827;
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    
+    .sidebar-brand .icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+    
+    .sidebar-search {
+      padding: 16px 20px;
+    }
+    
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px 14px;
+      transition: all 0.2s ease;
+    }
+    
+    .search-box:focus-within {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+    
+    .search-box input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 13px;
+      color: #374151;
+      background: transparent;
+    }
+    
+    .search-box input::placeholder {
+      color: #9ca3af;
+    }
+    
+    .search-box svg {
+      width: 16px;
+      height: 16px;
+      color: #9ca3af;
+    }
+    
+    .sidebar-nav {
+      flex: 1;
+      padding: 12px 10px;
+      overflow-y: auto;
+    }
+    
+    .sidebar-nav ul, .sidebar-nav li {
+      list-style: none;
+    }
+    
+    .sidebar-section {
+      margin-bottom: 6px;
+    }
+    
+    .sidebar-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 12px;
+      margin: 0 2px;
+      transition: all 0.2s ease;
+    }
+    
+    .sidebar-section-header:hover {
+      background: rgba(59, 130, 246, 0.07);
+    }
+    
+    .sidebar-section-header.open {
+      background: rgba(59, 130, 246, 0.1);
+    }
+    
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .section-num {
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
+    }
+    
+    .section-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    
+    .sidebar-section-header .arrow {
+      width: 18px;
+      height: 18px;
+      color: #9ca3af;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .sidebar-section-header:hover .arrow {
+      color: #6b7280;
+    }
+    
+    .sidebar-section-header.open .arrow {
+      transform: rotate(90deg);
+      color: #3b82f6;
+    }
+    
+    .sidebar-section-items {
+      display: none;
+      animation: slideDown 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .sidebar-section-items.open {
+      display: block;
+    }
+    
+    .sidebar-section-items ul {
+      padding: 6px 6px 10px;
+    }
+    
+    .sidebar-section-items li {
+      margin: 3px 0;
+    }
+    
+    .sidebar-section-items li.level-2 {
+      padding-left: 14px;
+    }
+    
+    .sidebar-section-items li.level-3 {
+      padding-left: 28px;
+    }
+    
+    .sidebar-section-items a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      font-size: 13px;
+      color: #6b7280;
+      text-decoration: none;
+      border-radius: 10px;
+      border-left: 2px solid transparent;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+    
+    .sidebar-section-items a:hover {
+      color: #3b82f6;
+      background: rgba(59, 130, 246, 0.06);
+      border-left-color: rgba(59, 130, 246, 0.3);
+    }
+    
+    .sidebar-section-items a.active {
+      color: #2563eb;
+      background: linear-gradient(90deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.06) 100%);
+      font-weight: 500;
+      border-left-color: #3b82f6;
+    }
+    
+    .sidebar-section-items a.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 20px;
+      background: linear-gradient(180deg, #3b82f6 0%, #6366f1 100%);
+      border-radius: 0 3px 3px 0;
+    }
+    
+    .sidebar-section-items a .num {
+      font-size: 11px;
+      font-weight: 500;
+      color: #9ca3af;
+      min-width: 28px;
+      padding: 2px 6px;
+      background: #f3f4f6;
+      border-radius: 4px;
+      text-align: center;
+    }
+    
+    .sidebar-section-items a:hover .num {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+    }
+    
+    .sidebar-section-items a.active .num {
+      background: rgba(59, 130, 246, 0.15);
+      color: #2563eb;
+    }
+    
+    .sidebar-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
+      margin: 10px 14px 14px;
+    }
+    
+    .sidebar-external {
+      padding: 0 12px 20px;
+    }
+    
+    .sidebar-external a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6b7280;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    
+    .sidebar-external a:hover {
+      color: #3b82f6;
+      border-color: #3b82f6;
+      background: #f0f7ff;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+    }
+    
+    .sidebar-external a svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    /* ===== Content ===== */
+    .content {
+      flex: 1;
+      margin-left: 300px;
+      padding: 48px 72px;
+      min-height: 100vh;
+      background: #ffffff;
+    }
+    
+    /* ===== Table of Contents ===== */
+    .toc {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 24px 0 32px;
+    }
+    .toc-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e293b;
+      margin: 0 0 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .toc-item {
+      padding: 6px 0;
+    }
+    .toc-item a {
+      color: #475569;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      display: block;
+    }
+    .toc-item a:hover {
+      color: #3b82f6;
+      padding-left: 6px;
+    }
+    .toc-h2 {
+      font-size: 14px;
+      font-weight: 500;
+      border-bottom: 1px solid #f1f5f9;
+      margin-bottom: 4px;
+    }
+    .toc-h2:last-child {
+      border-bottom: none;
+    }
+    .toc-h3 {
+      padding-left: 16px;
+      font-size: 13px;
+    }
+    .toc-h3 a::before {
+      content: "·";
+      margin-right: 8px;
+      color: #94a3b8;
+    }
+    
+    .markdown-section {
+      max-width: 1200px;
+    }
+    
+    /* ===== Typography ===== */
+    .markdown-section h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #111827;
+      letter-spacing: -0.025em;
+      margin: 0 0 28px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #e5e7eb;
+      line-height: 1.3;
+    }
+    
+    .markdown-section h2 {
+      font-size: 22px;
+      font-weight: 650;
+      color: #1f2937;
+      letter-spacing: -0.015em;
+      margin: 48px 0 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .markdown-section h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: #2563eb;
+      margin: 32px 0 14px;
+      padding-left: 12px;
+      border-left: 3px solid #3b82f6;
+    }
+    
+    .markdown-section h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #374151;
+      margin: 24px 0 10px;
+    }
+    
+    .markdown-section p {
+      margin: 14px 0;
+      color: #4b5563;
+      line-height: 1.75;
+      font-size: 14.5px;
+    }
+    
+    .markdown-section a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 500;
+      border-bottom: 1px solid transparent;
+      transition: all 0.15s ease;
+    }
+    
+    .markdown-section a:hover {
+      color: #1d4ed8;
+      border-bottom-color: #2563eb;
+    }
+    
+    .markdown-section code {
+      background: #f3f4f6;
+      color: #dc2626;
+      padding: 3px 7px;
+      font-size: 13px;
+      border-radius: 5px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Consolas', monospace;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .markdown-section pre {
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 24px 28px;
+      overflow-x: auto;
+      margin: 24px 0;
+      border: 1px solid #334155;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    .markdown-section pre code {
+      background: transparent;
+      color: #e2e8f0;
+      padding: 0;
+      font-size: 13.5px;
+      line-height: 1.7;
+      border: none;
+    }
+    
+    .markdown-section blockquote {
+      background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+      border-left: 4px solid #3b82f6;
+      border-radius: 0 12px 12px 0;
+      padding: 18px 24px;
+      margin: 24px 0;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08);
+    }
+    
+    .markdown-section blockquote p {
+      margin: 0;
+      color: #374151;
+      line-height: 1.7;
+    }
+    
+    .markdown-section table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 24px 0;
+      font-size: 14px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .markdown-section table th {
+      background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+      font-weight: 600;
+      text-align: left;
+      padding: 14px 18px;
+      color: #374151;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .markdown-section table td {
+      padding: 13px 18px;
+      border-top: 1px solid #f3f4f6;
+      color: #4b5563;
+    }
+    
+    .markdown-section table tr:nth-child(2n) td {
+      background: #fafafa;
+    }
+    
+    .markdown-section table tr:hover td {
+      background: #f0f9ff;
+    }
+    
+    .markdown-section ul, .markdown-section ol {
+      padding-left: 26px;
+      margin: 14px 0;
+    }
+    
+    .markdown-section li {
+      margin: 8px 0;
+      color: #4b5563;
+      line-height: 1.7;
+    }
+    
+    .markdown-section li::marker {
+      color: #3b82f6;
+    }
+    
+    .markdown-section hr {
+      height: 2px;
+      background: linear-gradient(90deg, #e5e7eb, #f3f4f6, #e5e7eb);
+      border: none;
+      margin: 40px 0;
+    }
+    
+    .markdown-section img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    /* ===== Mermaid Diagrams ===== */
+    /* ===== Mermaid Diagrams ===== */
+    .mermaid {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+      overflow-x: auto;
+      border: 1px solid #e2e8f0;
+      display: block;
+    }
+    .mermaid.rendered {
+      display: block;
+    }
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+    .mermaid svg text {
+      fill: #1e293b !important;
+    }
+    .mermaid-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 16px;
+      color: #dc2626;
+      margin: 20px 0;
+    }
+    .mermaid-loading {
+      background: #f8fafc;
+      border: 1px dashed #e2e8f0;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+      color: #64748b;
+      text-align: center;
+    }
+    
+    /* ===== Navigation ===== */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+    }
+    
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      color: #475569;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+    
+    .nav a:hover {
+      background: #3b82f6;
+      color: #fff;
+      border-color: #3b82f6;
+    }
+    
+    /* ===== Mobile ===== */
+    @media (max-width: 1024px) {
+      .sidebar { transform: translateX(-100%); transition: transform 0.2s ease; }
+      .sidebar.open { transform: translateX(0); }
+      .content { margin-left: 0; padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <a href="/index.html" class="sidebar-brand">
+          <span class="icon">📚</span>
+          OpenClaw Agent 源码学习
+        </a>
+      </div>
+      
+      <div class="sidebar-search">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input type="text" placeholder="搜索文档..." id="searchInput">
+        </div>
+      </div>
+      
+      <div class="sidebar-nav">
+        <div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">01</span>
+            <span class="section-name">系统架构基础</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/01-architecture/01-layered-architecture.html"><span class="num">01</span>分层架构全景</a></li><li><a href="/01-architecture/02-core-concepts.html"><span class="num">02</span>核心概念模型</a></li><li><a href="/01-architecture/03-core-source-index.html"><span class="num">03</span>核心源码索引</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">02</span>
+            <span class="section-name">网关与控制平面</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/02-gateway-control/01-gateway-positioning.html"><span class="num">01</span>Gateway 定位与职责</a></li><li><a href="/02-gateway-control/02-config-system.html"><span class="num">02</span>配置系统与热重载</a></li><li><a href="/02-gateway-control/03-websocket-protocol.html"><span class="num">03</span>WebSocket 协议层</a></li><li><a href="/02-gateway-control/04-cli-command-system.html"><span class="num">04</span>CLI 层与命令系统</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">03</span>
+            <span class="section-name">智能体执行引擎</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/03-execution-engine/01-agent-loop-workflow.html"><span class="num">01</span>Agent Loop 工作流</a></li><li><a href="/03-execution-engine/02-concurrency-control.html"><span class="num">02</span>队列与并发控制</a></li><li><a href="/03-execution-engine/03-streaming-events.html"><span class="num">03</span>流式输出与事件机制</a></li><li><a href="/03-execution-engine/04-timeout-lifecycle.html"><span class="num">04</span>超时与生命周期</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">04</span>
+            <span class="section-name">路由与会话管理</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/04-routing-session/01-routing-engine.html"><span class="num">01</span>路由层与 Session Key</a></li><li><a href="/04-routing-session/02-session-lifecycle.html"><span class="num">02</span>会话生命周期与重置</a></li><li><a href="/04-routing-session/03-session-tools.html"><span class="num">03</span>会话工具与子智能体</a></li><li><a href="/04-routing-session/04-channels-nodes.html"><span class="num">04</span>通道与节点架构</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">05</span>
+            <span class="section-name">上下文工程</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/05-context-engineering/01-context-window.html"><span class="num">01</span>上下文窗口管理</a></li><li><a href="/05-context-engineering/02-context-engine.html"><span class="num">02</span>上下文引擎</a></li><li><a href="/05-context-engineering/03-compaction-pruning.html"><span class="num">03</span>压缩与修剪</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">06</span>
+            <span class="section-name">记忆系统</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/06-memory-systems/01-memory-storage-layer.html"><span class="num">01</span>记忆存储层</a></li><li><a href="/06-memory-systems/02-active-retrieval.html"><span class="num">02</span>主动检索层</a></li><li><a href="/06-memory-systems/03-consolidation-backends.html"><span class="num">03</span>后台整理层</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">07</span>
+            <span class="section-name">工具与安全系统</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/07-tools-safety/01-tool-system.html"><span class="num">01</span>工具系统架构</a></li><li><a href="/07-tools-safety/02-permission-approval.html"><span class="num">02</span>权限模式与审批</a></li><li><a href="/07-tools-safety/03-safety-strategy.html"><span class="num">03</span>安全策略配置</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">08</span>
+            <span class="section-name">Provider 与模型管理</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/08-provider-models/01-provider-adapters.html"><span class="num">01</span>Provider 适配层</a></li><li><a href="/08-provider-models/02-model-failover.html"><span class="num">02</span>模型故障转移</a></li><li><a href="/08-provider-models/03-auth-cooldown.html"><span class="num">03</span>认证管理</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">09</span>
+            <span class="section-name">扩展机制</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/09-extensions/01-plugin-system.html"><span class="num">01</span>插件系统</a></li><li><a href="/09-extensions/02-hooks-system.html"><span class="num">02</span>钩子系统</a></li><li><a href="/09-extensions/03-multi-agent-routing.html"><span class="num">03</span>多智能体路由</a></li><li><a href="/09-extensions/04-parallel-lanes.html"><span class="num">04</span>并行专家通道</a></li><li><a href="/09-extensions/05-workspace-config.html"><span class="num">05</span>工作区配置</a></li></ul></div></div>
+      </div>
+      
+      <div class="sidebar-external">
+        <a href="https://github.com/Hyper66666/claude-code-sourcemap" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+          GitHub 源码
+        </a>
+      </div>
+    </nav>
+    <main class="content">
+      <article class="markdown-section">
+        <h1 id="01-记忆存储层">01 · 记忆存储层</h1><blockquote>
+<p><strong>学习要点</strong></p>
+<ul>
+<li>OpenClaw 的三层记忆体系分别是什么？存储层在其中的基础定位是什么？</li>
+<li>MEMORY.md 和 memory/YYYY-MM-DD.md 的用途、加载时机、作用域有何区别？</li>
+<li>索引系统索引哪些文件？索引触发的四种时机分别是什么？</li>
+<li>什么内容适合写入记忆？什么绝对不写？</li>
+<li>嵌入缓存和 SQLite 向量加速如何提升检索性能？</li>
+</ul>
+</blockquote>
+<hr>
+<h2 id="1-三层记忆体系">1. 三层记忆体系</h2><p>OpenClaw 将记忆抽象为<strong>三层架构</strong>，存储层是最底层的基础设施：</p>
+<div class="mermaid">flowchart TB
+    subgraph Layer1["① 记忆存储层 — 文件系统与索引"]
+        direction LR
+        L1_MD["📄 MEMORY.md
+长期记忆"]:::file
+        L1_DAY["📁 memory/YYYY-MM-DD.md
+每日日志"]:::file
+        L1_IDX["🗄️ SQLite 索引
+FTS5 + 向量 + 缓存"]:::file
+        L1_TOOL["🔧 记忆工具接口
+memory_search / memory_get"]:::file
+    end
+
+    subgraph Layer2["② 主动检索层 — 查询注入"]
+        direction LR
+        L2_AM["Active Memory
+回复前自动检索"]:::active
+        L2_HY["混合搜索
+BM25 + 向量融合"]:::active
+    end
+
+    subgraph Layer3["③ 后台整理层 — 整理提升"]
+        direction LR
+        L3_FLUSH["Auto Memory Flush
+压缩前存储提醒"]:::consolidate
+        L3_DREAM["Dreaming
+三阶段后台整理"]:::consolidate
+        L3_BACK["后端引擎分流
+SQLite / QMD / Honcho"]:::consolidate
+    end
+
+    Layer1 -->|"提供索引数据"| Layer2
+    Layer2 -->|"反馈查询模式"| Layer3
+    Layer3 -->|"写入提升记忆"| Layer1
+
+    classDef file fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+    classDef active fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef consolidate fill:#d1fae5,stroke:#10b981,color:#065f46</div><h3 id="各层职责">各层职责</h3><table>
+<thead>
+<tr>
+<th align="center">层级</th>
+<th>名称</th>
+<th>核心载体</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>①</strong></td>
+<td><strong>记忆存储层</strong></td>
+<td>MEMORY.md / 每日日志 / SQLite 索引</td>
+<td>持久化记忆数据，提供搜索索引，暴露工具接口</td>
+</tr>
+<tr>
+<td align="center"><strong>②</strong></td>
+<td><strong>主动检索层</strong></td>
+<td>Active Memory / 混合搜索</td>
+<td>在回复前自动检索相关记忆注入上下文</td>
+</tr>
+<tr>
+<td align="center"><strong>③</strong></td>
+<td><strong>后台整理层</strong></td>
+<td>Auto Flush / Dreaming / 后端引擎</td>
+<td>在系统空闲时整理、提升记忆质量</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>存储层是三层中最基础的一层。</strong> 没有存储层，主动检索无数据可查，后台整理无文件可写。</p>
+</blockquote>
+<hr>
+<h2 id="2-两个记忆文件">2. 两个记忆文件</h2><div class="mermaid">flowchart LR
+    subgraph 工作区["~/.openclaw/workspace/"]
+        direction TB
+        F1["📄 MEMORY.md
+精选的长期记忆
+决策 · 偏好 · 事实"]:::long
+        F2["📁 memory/
+   ├── 2026-06-01.md
+   ├── 2026-06-02.md
+   ├── ...
+   └── 2026-06-15.md"]:::daily
+        F3["📁 .dreams/
+Dreaming 状态
+(仅开启时存在)"]:::dream
+    end
+
+    classDef long fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef daily fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+    classDef dream fill:#fce7f3,stroke:#ec4899,color:#9d174d</div><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>用途</th>
+<th>加载时机</th>
+<th>作用域</th>
+<th>写入方式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong><code>MEMORY.md</code></strong></td>
+<td>精选的长期记忆：决策、偏好、持久性事实</td>
+<td>仅主要私人会话</td>
+<td>❌ 不在群组中使用</td>
+<td>主动写入 + Deep 阶段写入</td>
+</tr>
+<tr>
+<td><strong><code>memory/YYYY-MM-DD.md</code></strong></td>
+<td>每日日志（仅追加）：日常笔记、运行上下文</td>
+<td>会话开始时读取今天 + 昨天</td>
+<td>✅ 所有会话</td>
+<td>仅追加，自动按日期分隔</td>
+</tr>
+</tbody></table>
+<h3 id="写入策略">写入策略</h3><table>
+<thead>
+<tr>
+<th>写入时机</th>
+<th>写入位置</th>
+<th>内容类型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Agent 主动决策</td>
+<td><code>MEMORY.md</code></td>
+<td>&quot;这个偏好应该记住&quot;</td>
+</tr>
+<tr>
+<td>Agent 主动决策</td>
+<td><code>memory/YYYY-MM-DD.md</code></td>
+<td>&quot;今天做的这个决策记一下&quot;</td>
+</tr>
+<tr>
+<td>Auto Memory Flush</td>
+<td><code>memory/YYYY-MM-DD.md</code></td>
+<td>压缩前持久化提醒</td>
+</tr>
+<tr>
+<td>Dreaming Deep 阶段</td>
+<td><code>MEMORY.md</code></td>
+<td>从短期提升到长期</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-记忆工具接口">3. 记忆工具接口</h2><p>存储层暴露两个工具供上层使用：</p>
+<table>
+<thead>
+<tr>
+<th align="center">工具</th>
+<th>功能</th>
+<th>返回内容</th>
+<th align="center">启用条件</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong><code>memory_search</code></strong></td>
+<td>语义搜索，按意思找笔记</td>
+<td>片段文本 + 文件路径 + 行范围 + 相似度分数</td>
+<td align="center"><code>memorySearch.enabled = true</code></td>
+</tr>
+<tr>
+<td align="center"><strong><code>memory_get</code></strong></td>
+<td>读取特定文件的完整内容</td>
+<td>文件全文（可按行数限制）</td>
+<td align="center">同上</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>两个工具仅在 <code>memorySearch.enabled = true</code> 时启用。默认启用。</p>
+</blockquote>
+<hr>
+<h2 id="4-索引管理">4. 索引管理</h2><h3 id="索引内容">索引内容</h3><table>
+<thead>
+<tr>
+<th>文件类型</th>
+<th align="center">是否索引</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>MEMORY.md</code></td>
+<td align="center">✅</td>
+<td>长期记忆文件</td>
+</tr>
+<tr>
+<td><code>memory/**/*.md</code></td>
+<td align="center">✅</td>
+<td>所有记忆目录下的 Markdown</td>
+</tr>
+<tr>
+<td>工作区其他 <code>.md</code></td>
+<td align="center">❌</td>
+<td>仅 <code>extraPaths</code> 中显式指定的</td>
+</tr>
+<tr>
+<td>符号链接目标</td>
+<td align="center">❌</td>
+<td>被忽略</td>
+</tr>
+</tbody></table>
+<h3 id="四种索引触发时机">四种索引触发时机</h3><table>
+<thead>
+<tr>
+<th align="center">触发时机</th>
+<th>执行方式</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>会话开始</strong></td>
+<td>🔴 同步</td>
+<td>Agent 启动时立即执行索引</td>
+</tr>
+<tr>
+<td align="center"><strong>搜索时</strong></td>
+<td>🟡 异步</td>
+<td>如有必要，搜索时异步触发</td>
+</tr>
+<tr>
+<td align="center"><strong>间隔计划</strong></td>
+<td>🟢 定时</td>
+<td>按配置的 interval 定时执行</td>
+</tr>
+<tr>
+<td align="center"><strong>文件变化</strong></td>
+<td>🟢 防抖 1.5s</td>
+<td>文件变更后等待 1.5s 再索引，避免频繁触发</td>
+</tr>
+</tbody></table>
+<h3 id="索引存储">索引存储</h3><pre><code>~/.openclaw/memory/&lt;agentId&gt;/.sqlite</code></pre><p>可通过配置自定义：</p>
+<pre><code class="language-json5">{
+  agents: {
+    defaults: {
+      memorySearch: {
+        store: { path: "~/.openclaw/memory/{agentId}/.sqlite" },
+      },
+    },
+  },
+}</code></pre><h3 id="重新索引触发">重新索引触发</h3><p>当以下任一配置变化时，自动重置并重新索引：</p>
+<ul>
+<li>嵌入 provider 变更</li>
+<li>嵌入模型变更</li>
+<li>端点指纹变更</li>
+<li>分块参数变更</li>
+</ul>
+<hr>
+<h2 id="5-嵌入缓存">5. 嵌入缓存</h2><p>重复嵌入相同的文本会浪费 API 调用和 Token。嵌入缓存确保<strong>未更改的文本不会重新嵌入</strong>：</p>
+<pre><code class="language-json5">{
+  agents: {
+    defaults: {
+      memorySearch: {
+        cache: {
+          enabled: true,       // 启用缓存
+          maxEntries: 50000,   // 最大缓存条目
+        },
+      },
+    },
+  },
+}</code></pre><table>
+<thead>
+<tr>
+<th align="center">效果</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>减少 API 调用</strong></td>
+<td>未更改文本直接使用缓存向量</td>
+</tr>
+<tr>
+<td align="center"><strong>加速重新索引</strong></td>
+<td>重新索引时跳过已缓存的文本</td>
+</tr>
+<tr>
+<td align="center"><strong>降低 Token 消耗</strong></td>
+<td>避免重复发送相同文本给 embedding provider</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="6-sqlite-向量加速">6. SQLite 向量加速</h2><p>当 sqlite-vec 扩展可用时，嵌入存储在本机 SQLite 虚拟表中，向量距离查询在数据库内执行：</p>
+<table>
+<thead>
+<tr>
+<th align="center">状态</th>
+<th>查询方式</th>
+<th align="center">性能</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">✅ sqlite-vec 可用</td>
+<td>数据库内虚拟表查询</td>
+<td align="center">🚀 最快</td>
+</tr>
+<tr>
+<td align="center">❌ sqlite-vec 不可用</td>
+<td>进程内余弦相似度计算</td>
+<td align="center">🐢 较慢</td>
+</tr>
+</tbody></table>
+<pre><code class="language-json5">{
+  agents: {
+    defaults: {
+      memorySearch: {
+        store: {
+          vector: {
+            enabled: true,
+            extensionPath: "/path/to/sqlite-vec",
+          },
+        },
+      },
+    },
+  },
+}</code></pre><hr>
+<h2 id="7-额外记忆路径">7. 额外记忆路径</h2><p>可以将工作区外的目录也纳入记忆索引：</p>
+<pre><code class="language-json5">{
+  agents: {
+    defaults: {
+      memorySearch: {
+        extraPaths: ["../team-docs", "/srv/shared-notes/overview.md"],
+      },
+    },
+  },
+}</code></pre><table>
+<thead>
+<tr>
+<th align="center">规则</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>路径类型</strong></td>
+<td>绝对路径或相对于工作区</td>
+</tr>
+<tr>
+<td align="center"><strong>目录扫描</strong></td>
+<td>递归扫描 <code>.md</code> 文件</td>
+</tr>
+<tr>
+<td align="center"><strong>符号链接</strong></td>
+<td>❌ 被忽略</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="8-适合-vs-不适合">8. 适合 vs 不适合</h2><div class="mermaid">flowchart LR
+    subgraph 适合["✅ 适合写入"]
+        L1["长期偏好
+'回答先给结论再展开'"]
+        L2["项目规则
+'main 分支不能直接推送'"]
+        L3["重要事实
+'团队使用 Asia/Shanghai 时区'"]
+        L4["决策记录
+'选择 TypeScript 而非 Python'"]
+    end
+
+    subgraph 边界["⚠️ 谨慎写入"]
+        G1["半结构化链接
+'接口文档地址'"]
+        G2["临时计划
+'本周开发目标是...'"]
+        G3["个人备注
+'Alice 喜欢简洁回复'"]
+    end
+
+    subgraph 禁止["❌ 绝对不写"]
+        B1["密码 / API Key / Token"]
+        B2["一次性验证码"]
+        B3["临时的过期链接"]
+        B4["个人隐私
+身份证 / 地址"]
+    end
+
+    style 适合 fill:#d1fae5,stroke:#10b981,color:#065f46
+    style 边界 fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    style 禁止 fill:#fee2e2,stroke:#ef4444,color:#991b1b</div><hr>
+<h2 id="9-快速检查命令">9. 快速检查命令</h2><table>
+<thead>
+<tr>
+<th align="center">命令</th>
+<th>用途</th>
+<th align="center">属于哪层</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong><code>/status</code></strong></td>
+<td>查看窗口使用率和会话设置</td>
+<td align="center">全局</td>
+</tr>
+<tr>
+<td align="center"><strong><code>/context list</code></strong></td>
+<td>注入的文件 + 大致大小</td>
+<td align="center">存储层</td>
+</tr>
+<tr>
+<td align="center"><strong><code>/memory status</code></strong></td>
+<td>查看记忆系统状态（后端类型、索引数）</td>
+<td align="center">存储层</td>
+</tr>
+<tr>
+<td align="center"><strong><code>/memory search &lt;query&gt;</code></strong></td>
+<td>手动搜索记忆</td>
+<td align="center">检索层</td>
+</tr>
+</tbody></table>
+<hr>
+<blockquote>
+<p><strong>相关模块</strong>：<a href="02-active-retrieval.md">02 - 主动检索层</a> · <a href="03-consolidation-backends.md">03 - 后台整理层</a> · <a href="../09-extensions/05-workspace-config.md.html">09 - 工作区配置</a> · <a href="../05-context-engineering/03-compaction-pruning.md.html">05 - 压缩与修剪</a></p>
+</blockquote>
+<div class="nav"><a href="/05-context-engineering/03-compaction-pruning.html" class="nav-prev">‹ 03 压缩与修剪</a><a href="/06-memory-systems/02-active-retrieval.html" class="nav-next">02 主动检索层 ›</a></div>
+      </article>
+    </main>
+  </div>
+  
+  <script>
+    // Collapsible sidebar sections
+    document.querySelectorAll('.sidebar-section-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const items = header.nextElementSibling;
+        const isOpen = items.classList.contains('open');
+        document.querySelectorAll('.sidebar-section-items').forEach(el => el.classList.remove('open'));
+        document.querySelectorAll('.sidebar-section-header').forEach(el => el.classList.remove('open'));
+        if (!isOpen) {
+          items.classList.add('open');
+          header.classList.add('open');
+        }
+      });
+    });
+    
+    // Auto-open current page's section
+    const currentPath = window.location.pathname;
+    // Extract just the filename from pathname for comparison
+    const currentFilename = currentPath.split('/').pop();
+    document.querySelectorAll('.sidebar-section-items a').forEach(link => {
+      const href = link.getAttribute('href');
+      // Extract filename from href (strips ./ or ../ prefixes)
+      const linkFilename = href.split('/').pop();
+      if (linkFilename === currentFilename) {
+        link.classList.add('active');
+        const section = link.closest('.sidebar-section-items');
+        const header = section ? section.previousElementSibling : null;
+        if (section) section.classList.add('open');
+        if (header) header.classList.add('open');
+      }
+    });
+    
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        document.querySelectorAll('.sidebar-section-items a').forEach(link => {
+          const text = link.textContent.toLowerCase();
+          const li = link.closest('li');
+          li.style.display = (query === '' || text.includes(query)) ? '' : 'none';
+        });
+        document.querySelectorAll('.sidebar-section-items').forEach(section => {
+          const hasVisible = section.querySelectorAll('li:not([style*="display: none"])').length > 0;
+          const header = section.previousElementSibling;
+          if (hasVisible || query === '') {
+            section.classList.add('open');
+            header.classList.add('open');
+          }
+        });
+      });
+    }
+    
+    // Mermaid: Optimized async loading with lazy render
+    (function() {
+      const mermaidDivs = document.querySelectorAll('.mermaid');
+      if (mermaidDivs.length === 0) return;
+
+      // Save original chart definitions and show loading indicator
+      const chartData = [];
+      mermaidDivs.forEach((div, i) => {
+        chartData[i] = div.innerHTML;
+        div.innerHTML = '<div class="mermaid-loading" style="background:#f8fafc;border:1px dashed #e2e8f0;border-radius:12px;padding:24px;margin:20px 0;text-align:center;color:#64748b;">📊 图表加载中...</div>';
+      });
+
+      // CDN sources - try local first, then CDN with compatible version
+      const sources = [
+        '/lib/mermaid.min.js',
+        'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js',
+        'https://unpkg.com/mermaid@11/dist/mermaid.min.js'
+      ];
+      let sourceIndex = 0;
+      let mermaidLoaded = false;
+
+      function showError(msg) {
+        mermaidDivs.forEach((div, i) => {
+          const original = chartData[i];
+          div.innerHTML = '<details style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:20px 0;">'
+            + '<summary style="color:#dc2626;cursor:pointer;font-weight:500;">❌ ' + msg + '</summary>'
+            + '<pre style="margin-top:12px;padding:12px;background:#1e293b;color:#e2e8f0;border-radius:8px;overflow-x:auto;font-size:13px;">'
+            + original.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            + '</pre></details>';
+          div.classList.add('rendered');
+        });
+      }
+
+      function renderMermaid() {
+        if (mermaidLoaded) return;
+        mermaidLoaded = true;
+        try {
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+              primaryColor: '#3b82f6',
+              primaryTextColor: '#1e293b',
+              primaryBorderColor: '#3b82f6',
+              lineColor: '#64748b',
+              secondaryColor: '#f1f5f9',
+              tertiaryColor: '#f8fafc',
+            },
+            securityLevel: 'loose',
+            flowchart: { curve: 'basis', padding: 15, nodeSpacing: 50, rankSpacing: 80 },
+            maxTextSize: 50000,
+          });
+
+          function renderOne(div, i) {
+            // Restore original chart definition before rendering
+            div.innerHTML = chartData[i] || '';
+            // Remove any trailing <br> that marked may insert
+            div.innerHTML = div.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+            mermaid.run({ nodes: [div] }).then(function() {
+              div.classList.add('rendered');
+            }).catch(function(e) {
+              div.innerHTML = '<details style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:20px 0;">'
+                + '<summary style="color:#dc2626;cursor:pointer;font-weight:500;">❌ 渲染失败</summary>'
+                + '<pre style="margin-top:12px;padding:12px;background:#1e293b;color:#e2e8f0;border-radius:8px;overflow-x:auto;font-size:13px;">'
+                + (chartData[i] || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                + '</pre></details>';
+              div.classList.add('rendered');
+            });
+          }
+
+          // Lazy render using IntersectionObserver
+          if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver(function(entries) {
+              entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                  var idx = Array.prototype.indexOf.call(mermaidDivs, entry.target);
+                  renderOne(entry.target, idx);
+                  observer.unobserve(entry.target);
+                }
+              });
+            }, { rootMargin: '200px' });
+            Array.prototype.forEach.call(mermaidDivs, function(div, i) {
+              observer.observe(div);
+            });
+          } else {
+            // Fallback: render all immediately
+            Array.prototype.forEach.call(mermaidDivs, function(div, i) {
+              renderOne(div, i);
+            });
+          }
+        } catch(e) {
+          showError('图表渲染失败');
+        }
+      }
+
+      function tryLoadMermaid() {
+        if (sourceIndex >= sources.length) {
+          showError('无法加载图表库');
+          return;
+        }
+        var script = document.createElement('script');
+        script.src = sources[sourceIndex];
+        script.async = true;
+        script.onload = function() {
+          if (typeof mermaid === 'undefined') {
+            sourceIndex++;
+            tryLoadMermaid();
+            return;
+          }
+          renderMermaid();
+        };
+        script.onerror = function() {
+          sourceIndex++;
+          tryLoadMermaid();
+        };
+        document.head.appendChild(script);
+      }
+
+      if (document.readyState === 'complete') {
+        setTimeout(tryLoadMermaid, 100);
+      } else {
+        window.addEventListener('load', function() { setTimeout(tryLoadMermaid, 100); });
+      }
+    })();
+  </script>
+</body>
+</html>

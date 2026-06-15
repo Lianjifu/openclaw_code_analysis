@@ -1,0 +1,12 @@
+{
+  "name": "observable-agent",
+  "version": "1.0.0",
+  "description": "四大 AI Agent 平台可观测性方案文档站",
+  "scripts": {
+    "build": "node scripts/build-html.js",
+    "start": "python3 server.py"
+  },
+  "dependencies": {
+    "marked": "^18.0.3"
+  }
+}

@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>01 · 分层架构全景</title>
+  <style>
+    /* ===== Reset & Base ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 62.5%; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      font-size: 15px;
+      color: #1e293b;
+      line-height: 1.7;
+      background: #ffffff;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    /* ===== Layout ===== */
+    .app {
+      display: flex;
+      min-height: 100vh;
+    }
+    
+    /* ===== Sidebar ===== */
+        .sidebar {
+      width: 300px;
+      min-width: 300px;
+      background: linear-gradient(180deg, #fafbfc 0%, #f4f6f8 100%);
+      border-right: 1px solid #e8ebed;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .sidebar::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    .sidebar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .sidebar::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 4px;
+    }
+    
+    .sidebar::-webkit-scrollbar-thumb:hover {
+      background: #9ca3af;
+    }
+    
+    .sidebar-header {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid #e8ebed;
+    }
+    
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #111827;
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    
+    .sidebar-brand .icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+    
+    .sidebar-search {
+      padding: 16px 20px;
+    }
+    
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px 14px;
+      transition: all 0.2s ease;
+    }
+    
+    .search-box:focus-within {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+    
+    .search-box input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 13px;
+      color: #374151;
+      background: transparent;
+    }
+    
+    .search-box input::placeholder {
+      color: #9ca3af;
+    }
+    
+    .search-box svg {
+      width: 16px;
+      height: 16px;
+      color: #9ca3af;
+    }
+    
+    .sidebar-nav {
+      flex: 1;
+      padding: 12px 10px;
+      overflow-y: auto;
+    }
+    
+    .sidebar-nav ul, .sidebar-nav li {
+      list-style: none;
+    }
+    
+    .sidebar-section {
+      margin-bottom: 6px;
+    }
+    
+    .sidebar-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 12px;
+      margin: 0 2px;
+      transition: all 0.2s ease;
+    }
+    
+    .sidebar-section-header:hover {
+      background: rgba(59, 130, 246, 0.07);
+    }
+    
+    .sidebar-section-header.open {
+      background: rgba(59, 130, 246, 0.1);
+    }
+    
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .section-num {
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
+    }
+    
+    .section-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    
+    .sidebar-section-header .arrow {
+      width: 18px;
+      height: 18px;
+      color: #9ca3af;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .sidebar-section-header:hover .arrow {
+      color: #6b7280;
+    }
+    
+    .sidebar-section-header.open .arrow {
+      transform: rotate(90deg);
+      color: #3b82f6;
+    }
+    
+    .sidebar-section-items {
+      display: none;
+      animation: slideDown 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .sidebar-section-items.open {
+      display: block;
+    }
+    
+    .sidebar-section-items ul {
+      padding: 6px 6px 10px;
+    }
+    
+    .sidebar-section-items li {
+      margin: 3px 0;
+    }
+    
+    .sidebar-section-items li.level-2 {
+      padding-left: 14px;
+    }
+    
+    .sidebar-section-items li.level-3 {
+      padding-left: 28px;
+    }
+    
+    .sidebar-section-items a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      font-size: 13px;
+      color: #6b7280;
+      text-decoration: none;
+      border-radius: 10px;
+      border-left: 2px solid transparent;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+    
+    .sidebar-section-items a:hover {
+      color: #3b82f6;
+      background: rgba(59, 130, 246, 0.06);
+      border-left-color: rgba(59, 130, 246, 0.3);
+    }
+    
+    .sidebar-section-items a.active {
+      color: #2563eb;
+      background: linear-gradient(90deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.06) 100%);
+      font-weight: 500;
+      border-left-color: #3b82f6;
+    }
+    
+    .sidebar-section-items a.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 20px;
+      background: linear-gradient(180deg, #3b82f6 0%, #6366f1 100%);
+      border-radius: 0 3px 3px 0;
+    }
+    
+    .sidebar-section-items a .num {
+      font-size: 11px;
+      font-weight: 500;
+      color: #9ca3af;
+      min-width: 28px;
+      padding: 2px 6px;
+      background: #f3f4f6;
+      border-radius: 4px;
+      text-align: center;
+    }
+    
+    .sidebar-section-items a:hover .num {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+    }
+    
+    .sidebar-section-items a.active .num {
+      background: rgba(59, 130, 246, 0.15);
+      color: #2563eb;
+    }
+    
+    .sidebar-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
+      margin: 10px 14px 14px;
+    }
+    
+    .sidebar-external {
+      padding: 0 12px 20px;
+    }
+    
+    .sidebar-external a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6b7280;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    
+    .sidebar-external a:hover {
+      color: #3b82f6;
+      border-color: #3b82f6;
+      background: #f0f7ff;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+    }
+    
+    .sidebar-external a svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    /* ===== Content ===== */
+    .content {
+      flex: 1;
+      margin-left: 300px;
+      padding: 48px 72px;
+      min-height: 100vh;
+      background: #ffffff;
+    }
+    
+    /* ===== Table of Contents ===== */
+    .toc {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 24px 0 32px;
+    }
+    .toc-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e293b;
+      margin: 0 0 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .toc-item {
+      padding: 6px 0;
+    }
+    .toc-item a {
+      color: #475569;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      display: block;
+    }
+    .toc-item a:hover {
+      color: #3b82f6;
+      padding-left: 6px;
+    }
+    .toc-h2 {
+      font-size: 14px;
+      font-weight: 500;
+      border-bottom: 1px solid #f1f5f9;
+      margin-bottom: 4px;
+    }
+    .toc-h2:last-child {
+      border-bottom: none;
+    }
+    .toc-h3 {
+      padding-left: 16px;
+      font-size: 13px;
+    }
+    .toc-h3 a::before {
+      content: "·";
+      margin-right: 8px;
+      color: #94a3b8;
+    }
+    
+    .markdown-section {
+      max-width: 1200px;
+    }
+    
+    /* ===== Typography ===== */
+    .markdown-section h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #111827;
+      letter-spacing: -0.025em;
+      margin: 0 0 28px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #e5e7eb;
+      line-height: 1.3;
+    }
+    
+    .markdown-section h2 {
+      font-size: 22px;
+      font-weight: 650;
+      color: #1f2937;
+      letter-spacing: -0.015em;
+      margin: 48px 0 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .markdown-section h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: #2563eb;
+      margin: 32px 0 14px;
+      padding-left: 12px;
+      border-left: 3px solid #3b82f6;
+    }
+    
+    .markdown-section h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #374151;
+      margin: 24px 0 10px;
+    }
+    
+    .markdown-section p {
+      margin: 14px 0;
+      color: #4b5563;
+      line-height: 1.75;
+      font-size: 14.5px;
+    }
+    
+    .markdown-section a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 500;
+      border-bottom: 1px solid transparent;
+      transition: all 0.15s ease;
+    }
+    
+    .markdown-section a:hover {
+      color: #1d4ed8;
+      border-bottom-color: #2563eb;
+    }
+    
+    .markdown-section code {
+      background: #f3f4f6;
+      color: #dc2626;
+      padding: 3px 7px;
+      font-size: 13px;
+      border-radius: 5px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Consolas', monospace;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .markdown-section pre {
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 24px 28px;
+      overflow-x: auto;
+      margin: 24px 0;
+      border: 1px solid #334155;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    .markdown-section pre code {
+      background: transparent;
+      color: #e2e8f0;
+      padding: 0;
+      font-size: 13.5px;
+      line-height: 1.7;
+      border: none;
+    }
+    
+    .markdown-section blockquote {
+      background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+      border-left: 4px solid #3b82f6;
+      border-radius: 0 12px 12px 0;
+      padding: 18px 24px;
+      margin: 24px 0;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08);
+    }
+    
+    .markdown-section blockquote p {
+      margin: 0;
+      color: #374151;
+      line-height: 1.7;
+    }
+    
+    .markdown-section table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 24px 0;
+      font-size: 14px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .markdown-section table th {
+      background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+      font-weight: 600;
+      text-align: left;
+      padding: 14px 18px;
+      color: #374151;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .markdown-section table td {
+      padding: 13px 18px;
+      border-top: 1px solid #f3f4f6;
+      color: #4b5563;
+    }
+    
+    .markdown-section table tr:nth-child(2n) td {
+      background: #fafafa;
+    }
+    
+    .markdown-section table tr:hover td {
+      background: #f0f9ff;
+    }
+    
+    .markdown-section ul, .markdown-section ol {
+      padding-left: 26px;
+      margin: 14px 0;
+    }
+    
+    .markdown-section li {
+      margin: 8px 0;
+      color: #4b5563;
+      line-height: 1.7;
+    }
+    
+    .markdown-section li::marker {
+      color: #3b82f6;
+    }
+    
+    .markdown-section hr {
+      height: 2px;
+      background: linear-gradient(90deg, #e5e7eb, #f3f4f6, #e5e7eb);
+      border: none;
+      margin: 40px 0;
+    }
+    
+    .markdown-section img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    /* ===== Mermaid Diagrams ===== */
+    /* ===== Mermaid Diagrams ===== */
+    .mermaid {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+      overflow-x: auto;
+      border: 1px solid #e2e8f0;
+      display: block;
+    }
+    .mermaid.rendered {
+      display: block;
+    }
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+    .mermaid svg text {
+      fill: #1e293b !important;
+    }
+    .mermaid-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 16px;
+      color: #dc2626;
+      margin: 20px 0;
+    }
+    .mermaid-loading {
+      background: #f8fafc;
+      border: 1px dashed #e2e8f0;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+      color: #64748b;
+      text-align: center;
+    }
+    
+    /* ===== Navigation ===== */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+    }
+    
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      color: #475569;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+    
+    .nav a:hover {
+      background: #3b82f6;
+      color: #fff;
+      border-color: #3b82f6;
+    }
+    
+    /* ===== Mobile ===== */
+    @media (max-width: 1024px) {
+      .sidebar { transform: translateX(-100%); transition: transform 0.2s ease; }
+      .sidebar.open { transform: translateX(0); }
+      .content { margin-left: 0; padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <a href="/index.html" class="sidebar-brand">
+          <span class="icon">📚</span>
+          OpenClaw Agent 源码学习
+        </a>
+      </div>
+      
+      <div class="sidebar-search">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input type="text" placeholder="搜索文档..." id="searchInput">
+        </div>
+      </div>
+      
+      <div class="sidebar-nav">
+        <div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">01</span>
+            <span class="section-name">系统架构基础</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/01-architecture/01-layered-architecture.html"><span class="num">01</span>分层架构全景</a></li><li><a href="/01-architecture/02-core-concepts.html"><span class="num">02</span>核心概念模型</a></li><li><a href="/01-architecture/03-core-source-index.html"><span class="num">03</span>核心源码索引</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">02</span>
+            <span class="section-name">网关与控制平面</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/02-gateway-control/01-gateway-positioning.html"><span class="num">01</span>Gateway 定位与职责</a></li><li><a href="/02-gateway-control/02-config-system.html"><span class="num">02</span>配置系统与热重载</a></li><li><a href="/02-gateway-control/03-websocket-protocol.html"><span class="num">03</span>WebSocket 协议层</a></li><li><a href="/02-gateway-control/04-cli-command-system.html"><span class="num">04</span>CLI 层与命令系统</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">03</span>
+            <span class="section-name">智能体执行引擎</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/03-execution-engine/01-agent-loop-workflow.html"><span class="num">01</span>Agent Loop 工作流</a></li><li><a href="/03-execution-engine/02-concurrency-control.html"><span class="num">02</span>队列与并发控制</a></li><li><a href="/03-execution-engine/03-streaming-events.html"><span class="num">03</span>流式输出与事件机制</a></li><li><a href="/03-execution-engine/04-timeout-lifecycle.html"><span class="num">04</span>超时与生命周期</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">04</span>
+            <span class="section-name">路由与会话管理</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/04-routing-session/01-routing-engine.html"><span class="num">01</span>路由层与 Session Key</a></li><li><a href="/04-routing-session/02-session-lifecycle.html"><span class="num">02</span>会话生命周期与重置</a></li><li><a href="/04-routing-session/03-session-tools.html"><span class="num">03</span>会话工具与子智能体</a></li><li><a href="/04-routing-session/04-channels-nodes.html"><span class="num">04</span>通道与节点架构</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">05</span>
+            <span class="section-name">上下文工程</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/05-context-engineering/01-context-window.html"><span class="num">01</span>上下文窗口管理</a></li><li><a href="/05-context-engineering/02-context-engine.html"><span class="num">02</span>上下文引擎</a></li><li><a href="/05-context-engineering/03-compaction-pruning.html"><span class="num">03</span>压缩与修剪</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">06</span>
+            <span class="section-name">记忆系统</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/06-memory-systems/01-memory-storage-layer.html"><span class="num">01</span>记忆存储层</a></li><li><a href="/06-memory-systems/02-active-retrieval.html"><span class="num">02</span>主动检索层</a></li><li><a href="/06-memory-systems/03-consolidation-backends.html"><span class="num">03</span>后台整理层</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">07</span>
+            <span class="section-name">工具与安全系统</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/07-tools-safety/01-tool-system.html"><span class="num">01</span>工具系统架构</a></li><li><a href="/07-tools-safety/02-permission-approval.html"><span class="num">02</span>权限模式与审批</a></li><li><a href="/07-tools-safety/03-safety-strategy.html"><span class="num">03</span>安全策略配置</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">08</span>
+            <span class="section-name">Provider 与模型管理</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/08-provider-models/01-provider-adapters.html"><span class="num">01</span>Provider 适配层</a></li><li><a href="/08-provider-models/02-model-failover.html"><span class="num">02</span>模型故障转移</a></li><li><a href="/08-provider-models/03-auth-cooldown.html"><span class="num">03</span>认证管理</a></li></ul></div></div><div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span class="section-title">
+            <span class="section-num">09</span>
+            <span class="section-name">扩展机制</span>
+          </span>
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="sidebar-section-items"><ul><li><a href="/09-extensions/01-plugin-system.html"><span class="num">01</span>插件系统</a></li><li><a href="/09-extensions/02-hooks-system.html"><span class="num">02</span>钩子系统</a></li><li><a href="/09-extensions/03-multi-agent-routing.html"><span class="num">03</span>多智能体路由</a></li><li><a href="/09-extensions/04-parallel-lanes.html"><span class="num">04</span>并行专家通道</a></li><li><a href="/09-extensions/05-workspace-config.html"><span class="num">05</span>工作区配置</a></li></ul></div></div>
+      </div>
+      
+      <div class="sidebar-external">
+        <a href="https://github.com/Hyper66666/claude-code-sourcemap" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+          GitHub 源码
+        </a>
+      </div>
+    </nav>
+    <main class="content">
+      <article class="markdown-section">
+        <h1 id="01-分层架构全景">01 · 分层架构全景</h1><blockquote>
+<p><strong>学习要点</strong></p>
+<ul>
+<li>OpenClaw 的整体架构分几层？每层的核心组件和职责是什么？</li>
+<li>智能体 5 层状态机如何驱动消息从入站到回复的完整转化？</li>
+<li>Gateway 为什么是&quot;控制平面&quot;和&quot;单一事实来源&quot;？</li>
+<li>新手最容易忽略哪三条规则？</li>
+</ul>
+</blockquote>
+<hr>
+<h2 id="1-一句话版">1. 一句话版</h2><pre><code>OpenClaw = 一个自托管 Gateway 网关 + 一个 AI Agent + 很多通道、插件和节点</code></pre><ul>
+<li><strong>自托管</strong>：运行在自己的电脑或服务器上，配置、会话、记忆默认都在本机</li>
+<li><strong>核心设计问题</strong>：OpenClaw 的智能体为什么&quot;能长期跑&quot;，而不是只在 demo 里跑一次？</li>
+</ul>
+<p>答案在于多层架构的<strong>韧性设计</strong>——会话持久化、队列并发控制、状态机容错、模型故障转移。每一层都有独立的容错和重试逻辑，单点故障不会导致整个 Agent 卡死。</p>
+<hr>
+<h2 id="2-整体分层架构">2. 整体分层架构</h2><div class="mermaid">flowchart LR
+    CLI[CLI / Control UI
+用户交互]:::cli
+    --> GW[Gateway
+控制平面]:::gw
+    GW --> CH[Channel
+消息入口]:::chan
+    GW --> RT[Router
+消息路由]:::chan
+    GW --> PL[Plugin
+扩展框架]:::chan
+
+    CH --> AG[Agent Runner
+执行引擎]:::agent
+    RT --> AG
+    PL --> AG
+
+    AG --> AI[AI Provider
+模型调用]:::ai
+
+    subgraph Storage["持久化层"]
+        SS[Sessions
+会话存储]:::side
+        MEM[Memory
+记忆文件]:::side
+        CFG[Config
+配置文件]:::side
+    end
+
+    AG -.-> Storage
+
+    classDef cli fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+    classDef gw fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef chan fill:#d1fae5,stroke:#10b981,color:#065f46
+    classDef agent fill:#d1fae5,stroke:#10b981,color:#065f46
+    classDef ai fill:#fce7f3,stroke:#ec4899,color:#9d174d
+    classDef side fill:#f1f5f9,stroke:#64748b,color:#334155
+
+    linkStyle 5,6,7 stroke:#d1fae5,stroke-width:2px</div><h3 id="各层职责">各层职责</h3><table>
+<thead>
+<tr>
+<th align="center">层级</th>
+<th>核心组件</th>
+<th>源码目录</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>接入层</strong></td>
+<td>CLI / Control UI</td>
+<td><code>src/cli/</code></td>
+<td>用户交互界面，命令行或浏览器控制面板</td>
+</tr>
+<tr>
+<td align="center"><strong>网关层</strong></td>
+<td>Gateway</td>
+<td><code>src/gateway/</code></td>
+<td>控制平面，管理连接、会话生命周期、配置热重载</td>
+</tr>
+<tr>
+<td align="center"><strong>通道与路由层</strong></td>
+<td>Channel / Router / Plugin</td>
+<td><code>src/channels/</code>, <code>src/routing/</code>, <code>src/plugins/</code></td>
+<td>消息入口适配，路由分发，插件扩展</td>
+</tr>
+<tr>
+<td align="center"><strong>执行层</strong></td>
+<td>Agent Runner</td>
+<td><code>src/agents/embedded-agent-runner/</code></td>
+<td>智能体循环（Agent Loop），LLM 调用、工具执行、流式输出</td>
+</tr>
+<tr>
+<td align="center"><strong>模型层</strong></td>
+<td>AI Provider</td>
+<td><code>src/providers/</code></td>
+<td>对接各类大模型 API，统一接口屏蔽差异</td>
+</tr>
+<tr>
+<td align="center"><strong>持久化层</strong></td>
+<td>Sessions / Memory / Config</td>
+<td><code>src/config/</code></td>
+<td>会话历史、记忆文件、配置存储</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>核心规则</strong>：所有会话状态由网关&quot;主控&quot;。UI 客户端必须查询网关获取会话列表和 Token 计数，不读本地文件。</p>
+</blockquote>
+<hr>
+<h2 id="3-智能体-5-层状态机">3. 智能体 5 层状态机</h2><p>真实链路不是一次 <code>model.generate()</code>，而是<strong>多层状态机</strong>协同工作。这是 OpenClaw 能够&quot;长期运行&quot;的核心机制：</p>
+<div class="mermaid">flowchart LR
+    SL["session lane
+会话队列"]:::cli
+    GL["global lane
+全局队列"]:::cli
+    AT["attempt
+单次执行"]:::agent
+    SB["subscribe
+流式事件"]:::agent
+    WC["wait compaction
+等压缩稳定"]:::gw
+    FZ["finalize
+收尾"]:::agent
+    ER{error?}:::ai
+    RF["rotate profile
+换密钥"]:::ai
+    CP["compact
+压缩"]:::gw
+    FB["fallback
+换模型"]:::ai
+    DONE["完成"]:::side
+
+    SL --> GL --> AT --> SB --> WC --> FZ --> ER
+    ER -->|yes| RF --> CP --> FB
+    ER -->|no| DONE
+    FB --> AT
+
+    classDef cli fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+    classDef gw fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef agent fill:#d1fae5,stroke:#10b981,color:#065f46
+    classDef ai fill:#fce7f3,stroke:#ec4899,color:#9d174d
+    classDef side fill:#f1f5f9,stroke:#64748b,color:#334155</div><table>
+<thead>
+<tr>
+<th align="center">状态</th>
+<th align="center">所属层</th>
+<th>职责</th>
+<th align="center">容错</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>session lane</strong></td>
+<td align="center">接入层</td>
+<td>会话级队列，保证同一会话消息串行</td>
+<td align="center">concurrency=1</td>
+</tr>
+<tr>
+<td align="center"><strong>global lane</strong></td>
+<td align="center">接入层</td>
+<td>全局并发控制，限制同时运行数</td>
+<td align="center">maxPending 兜底</td>
+</tr>
+<tr>
+<td align="center"><strong>attempt</strong></td>
+<td align="center">执行层</td>
+<td>单次真实执行事务，调用 LLM + 工具</td>
+<td align="center">超时中止</td>
+</tr>
+<tr>
+<td align="center"><strong>subscribe</strong></td>
+<td align="center">执行层</td>
+<td>流式事件稳定化，收集增量消息</td>
+<td align="center">事件缓冲 + 幂等</td>
+</tr>
+<tr>
+<td align="center"><strong>wait compaction</strong></td>
+<td align="center">网关层</td>
+<td>压缩等待，腾出上下文空间</td>
+<td align="center">compactionRetryPromise</td>
+</tr>
+<tr>
+<td align="center"><strong>finalize</strong></td>
+<td align="center">执行层</td>
+<td>收尾：回复整形、持久化</td>
+<td align="center">异常捕获</td>
+</tr>
+<tr>
+<td align="center"><strong>rotate profile</strong></td>
+<td align="center">模型层</td>
+<td>密钥轮换，换账号重试</td>
+<td align="center">多 profile 轮换</td>
+</tr>
+<tr>
+<td align="center"><strong>compact</strong></td>
+<td align="center">网关层</td>
+<td>压缩旧对话为摘要</td>
+<td align="center">reserveTokensFloor</td>
+</tr>
+<tr>
+<td align="center"><strong>fallback</strong></td>
+<td align="center">模型层</td>
+<td>模型回退，换一个模型继续</td>
+<td align="center">多候选 Fallback 列表</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="4-消息完整旅程">4. 消息完整旅程</h2><p>从用户发送消息到收到回复的<strong>完整跨层链路</strong>（含调用链源码路径）：</p>
+<div class="mermaid">sequenceDiagram
+    participant U as User
+    participant C as Channel
+    participant G as Gateway
+    participant R as Router
+    participant D as Dispatch
+    participant A as Agent Runner
+    participant L as LLM
+
+    U->>C: [1] 发送消息
+    C->>G: [2] InboundMessage
+    G->>R: [3] 路由解析
+    R->>D: [4] 消息分发 + hooks
+    D->>A: [5] 启动 Agent Loop
+    A->>L: [6] LLM 调用
+    L-->>A: [7] 流式回复
+    A-->>G: [8] routeReply
+    G-->>C: [9] 格式化回复
+    C-->>U: [10] 用户收到</div><table>
+<thead>
+<tr>
+<th align="center">步骤</th>
+<th>组件</th>
+<th>关键文件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">[1]</td>
+<td>User</td>
+<td>—</td>
+<td>用户通过任意通道发送消息</td>
+</tr>
+<tr>
+<td align="center">[2]</td>
+<td>Channel</td>
+<td><code>src/channels/</code></td>
+<td>适配器接收并标准化为 InboundMessage</td>
+</tr>
+<tr>
+<td align="center">[3]</td>
+<td>Gateway</td>
+<td><code>src/gateway/server.impl.ts</code></td>
+<td>认证与会话绑定</td>
+</tr>
+<tr>
+<td align="center">[4]</td>
+<td>Router</td>
+<td><code>src/routing/resolve-route.ts</code></td>
+<td>解析 session key，确定目标 Agent</td>
+</tr>
+<tr>
+<td align="center">[5]</td>
+<td>Dispatch</td>
+<td><code>src/auto-reply/dispatch.ts</code></td>
+<td>执行 hooks，编排自动回复</td>
+</tr>
+<tr>
+<td align="center">[6]</td>
+<td>Agent</td>
+<td><code>src/agents/embedded-agent-runner/run.ts</code></td>
+<td>构建上下文、调用 LLM</td>
+</tr>
+<tr>
+<td align="center">[7]</td>
+<td>LLM</td>
+<td><code>src/providers/</code></td>
+<td>模型推理，流式返回 Token</td>
+</tr>
+<tr>
+<td align="center">[8]</td>
+<td>Gateway</td>
+<td><code>src/gateway/server-chat.ts</code></td>
+<td>routeReply 回复路由</td>
+</tr>
+<tr>
+<td align="center">[9]</td>
+<td>Channel</td>
+<td>—</td>
+<td>格式化为目标通道消息</td>
+</tr>
+<tr>
+<td align="center">[10]</td>
+<td>User</td>
+<td>—</td>
+<td>收到回复</td>
+</tr>
+</tbody></table>
+<h3 id="核心调用链-文本版">核心调用链（文本版）</h3><pre><code>src/entry.ts → src/runtime.ts → src/gateway/server.impl.ts
+    → src/gateway/auth.ts → src/routing/resolve-route.ts
+    → src/auto-reply/dispatch.ts → src/agents/embedded-agent-runner/run.ts
+    → src/providers/anthropic.ts (或 openai.ts)
+    → src/agents/openclaw-tools.ts (多轮循环)
+    → src/auto-reply/reply/ → src/channels/ → 用户</code></pre><hr>
+<h2 id="5-完整架构全景图">5. 完整架构全景图</h2><div class="mermaid">flowchart LR
+    subgraph CHANNELS["📡 通道层"]
+        TG[Telegram]
+        WA[WhatsApp]
+        DC[Discord]
+        SL[Slack]
+        WEB[WebChat]
+        MS[Microsoft Teams]
+    end
+
+    subgraph GATEWAY["⚙️ 网关层"]
+        CAPI[HTTP API]
+        WS[WebSocket
+连接管理]
+        AUTH[Auth
+速率限制]
+    end
+
+    subgraph ROUTING["🔀 路由层"]
+        ROU[Router
+resolve-route.ts]
+        KEY[Session Key
+session-key.ts]
+    end
+
+    subgraph EXECUTION["🤖 执行层"]
+        DISP[Dispatch
+dispatch.ts]
+        AGENT[Agent Runner
+embedded-agent-runner]
+        TOOL[Tool System
+openclaw-tools.ts]
+        CTX[Context Guard
+context-window-guard.ts]
+        FALL[Model Fallback
+model-fallback.ts]
+    end
+
+    subgraph PLUGIN["🧩 插件层"]
+        PL[Plugin Loader
+plugins/loader.ts]
+        PR[Plugin Registry
+plugins/]
+    end
+
+    subgraph STORAGE["💾 存储层"]
+        SESS[Session Store
+config/sessions/store.ts]
+        MED[Media Store
+media/]
+        CFG[Config IO
+config/io.ts]
+    end
+
+    subgraph PROVIDER["🔌 模型层"]
+        ANTH[Anthropic
+Claude]
+        OPE[OpenAI
+GPT]
+        OLL[Ollama
+Local]
+    end
+
+    subgraph SIDECAR["🧰 附属能力"]
+        CR[Cron
+定时任务]
+        MEM[Memory
+记忆系统]
+        SEC[Security
+安全审计]
+        NODE[Nodes
+节点扩展]
+    end
+
+    CHANNELS --> GATEWAY
+    GATEWAY --> ROUTING
+    ROUTING --> EXECUTION
+    EXECUTION --> PROVIDER
+    EXECUTION --> PLUGIN
+    EXECUTION --> STORAGE
+    EXECUTION --- SIDECAR
+    PLUGIN --> PROVIDER
+    PLUGIN --> STORAGE
+    SIDECAR --> STORAGE
+    SIDECAR --> GATEWAY</div><hr>
+<h2 id="6-部署模式">6. 部署模式</h2><table>
+<thead>
+<tr>
+<th align="center">模式</th>
+<th>说明</th>
+<th>适用场景</th>
+<th align="center">安全等级</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><strong>本地部署</strong></td>
+<td>直接运行在本地机器</td>
+<td>开发/测试</td>
+<td align="center">🟢 高</td>
+</tr>
+<tr>
+<td align="center"><strong>Docker 部署</strong></td>
+<td>使用 Docker 容器</td>
+<td>生产环境</td>
+<td align="center">🟡 中</td>
+</tr>
+<tr>
+<td align="center"><strong>云服务器</strong></td>
+<td>部署到云服务器</td>
+<td>远程访问</td>
+<td align="center">🟡 中</td>
+</tr>
+<tr>
+<td align="center"><strong>节点连接</strong></td>
+<td>移动端/桌面端作为节点</td>
+<td>能力扩展</td>
+<td align="center">🔴 注意网络安全</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="7-自检清单">7. 自检清单</h2><table>
+<thead>
+<tr>
+<th>检查项</th>
+<th>说明</th>
+<th>预期答案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>消息路径</strong></td>
+<td>消息从通道到模型经过了哪 10 步？</td>
+<td>能画出消息完整旅程</td>
+</tr>
+<tr>
+<td><strong>并发安全</strong></td>
+<td>同一会话的消息会乱序吗？</td>
+<td>不会，Session Lane concurrency=1</td>
+</tr>
+<tr>
+<td><strong>容错链路</strong></td>
+<td>模型调用失败后有哪些兜底？</td>
+<td>Profile 轮换 → Fallback 模型</td>
+</tr>
+<tr>
+<td><strong>会话隔离</strong></td>
+<td>Alice 和 Bob 通过同一 Bot 发消息互看隐私？</td>
+<td>不会，per-channel-peer 隔离</td>
+</tr>
+<tr>
+<td><strong>配置热重载</strong></td>
+<td>改了通道配置需要重启吗？</td>
+<td>不需要，hybrid 模式即时生效</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="8-新手-3-条规则">8. 新手 3 条规则</h2><table>
+<thead>
+<tr>
+<th align="center">#</th>
+<th>规则</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">①</td>
+<td><strong>Gateway 要一直运行</strong></td>
+<td>它停了，所有通道和 Control UI 都失连</td>
+</tr>
+<tr>
+<td align="center">②</td>
+<td><strong>先用 Control UI 验证，再接聊天软件</strong></td>
+<td>确认 AI 能回复，再接 Telegram/WhatsApp</td>
+</tr>
+<tr>
+<td align="center">③</td>
+<td><strong>远程访问看安全配置</strong></td>
+<td>不要随便把 18789 端口暴露到公网</td>
+</tr>
+</tbody></table>
+<hr>
+<blockquote>
+<p><strong>相关模块</strong>：<a href="02-core-concepts.md">02 - 核心概念模型</a> · <a href="03-core-source-index.md">03 - 核心源码索引</a> · <a href="../02-gateway-control/01-gateway-positioning.md.html">02 - 网关与控制平面</a> · <a href="../03-execution-engine/01-agent-loop-workflow.md.html">03 - 执行引擎</a> · <a href="../04-routing-session/01-routing-engine.md.html">04 - 路由与会话管理</a></p>
+</blockquote>
+<div class="nav"><span></span><a href="/01-architecture/02-core-concepts.html" class="nav-next">02 核心概念模型 ›</a></div>
+      </article>
+    </main>
+  </div>
+  
+  <script>
+    // Collapsible sidebar sections
+    document.querySelectorAll('.sidebar-section-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const items = header.nextElementSibling;
+        const isOpen = items.classList.contains('open');
+        document.querySelectorAll('.sidebar-section-items').forEach(el => el.classList.remove('open'));
+        document.querySelectorAll('.sidebar-section-header').forEach(el => el.classList.remove('open'));
+        if (!isOpen) {
+          items.classList.add('open');
+          header.classList.add('open');
+        }
+      });
+    });
+    
+    // Auto-open current page's section
+    const currentPath = window.location.pathname;
+    // Extract just the filename from pathname for comparison
+    const currentFilename = currentPath.split('/').pop();
+    document.querySelectorAll('.sidebar-section-items a').forEach(link => {
+      const href = link.getAttribute('href');
+      // Extract filename from href (strips ./ or ../ prefixes)
+      const linkFilename = href.split('/').pop();
+      if (linkFilename === currentFilename) {
+        link.classList.add('active');
+        const section = link.closest('.sidebar-section-items');
+        const header = section ? section.previousElementSibling : null;
+        if (section) section.classList.add('open');
+        if (header) header.classList.add('open');
+      }
+    });
+    
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        document.querySelectorAll('.sidebar-section-items a').forEach(link => {
+          const text = link.textContent.toLowerCase();
+          const li = link.closest('li');
+          li.style.display = (query === '' || text.includes(query)) ? '' : 'none';
+        });
+        document.querySelectorAll('.sidebar-section-items').forEach(section => {
+          const hasVisible = section.querySelectorAll('li:not([style*="display: none"])').length > 0;
+          const header = section.previousElementSibling;
+          if (hasVisible || query === '') {
+            section.classList.add('open');
+            header.classList.add('open');
+          }
+        });
+      });
+    }
+    
+    // Mermaid: Optimized async loading with lazy render
+    (function() {
+      const mermaidDivs = document.querySelectorAll('.mermaid');
+      if (mermaidDivs.length === 0) return;
+
+      // Save original chart definitions and show loading indicator
+      const chartData = [];
+      mermaidDivs.forEach((div, i) => {
+        chartData[i] = div.innerHTML;
+        div.innerHTML = '<div class="mermaid-loading" style="background:#f8fafc;border:1px dashed #e2e8f0;border-radius:12px;padding:24px;margin:20px 0;text-align:center;color:#64748b;">📊 图表加载中...</div>';
+      });
+
+      // CDN sources - try local first, then CDN with compatible version
+      const sources = [
+        '/lib/mermaid.min.js',
+        'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js',
+        'https://unpkg.com/mermaid@11/dist/mermaid.min.js'
+      ];
+      let sourceIndex = 0;
+      let mermaidLoaded = false;
+
+      function showError(msg) {
+        mermaidDivs.forEach((div, i) => {
+          const original = chartData[i];
+          div.innerHTML = '<details style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:20px 0;">'
+            + '<summary style="color:#dc2626;cursor:pointer;font-weight:500;">❌ ' + msg + '</summary>'
+            + '<pre style="margin-top:12px;padding:12px;background:#1e293b;color:#e2e8f0;border-radius:8px;overflow-x:auto;font-size:13px;">'
+            + original.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            + '</pre></details>';
+          div.classList.add('rendered');
+        });
+      }
+
+      function renderMermaid() {
+        if (mermaidLoaded) return;
+        mermaidLoaded = true;
+        try {
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+              primaryColor: '#3b82f6',
+              primaryTextColor: '#1e293b',
+              primaryBorderColor: '#3b82f6',
+              lineColor: '#64748b',
+              secondaryColor: '#f1f5f9',
+              tertiaryColor: '#f8fafc',
+            },
+            securityLevel: 'loose',
+            flowchart: { curve: 'basis', padding: 15, nodeSpacing: 50, rankSpacing: 80 },
+            maxTextSize: 50000,
+          });
+
+          function renderOne(div, i) {
+            // Restore original chart definition before rendering
+            div.innerHTML = chartData[i] || '';
+            // Remove any trailing <br> that marked may insert
+            div.innerHTML = div.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+            mermaid.run({ nodes: [div] }).then(function() {
+              div.classList.add('rendered');
+            }).catch(function(e) {
+              div.innerHTML = '<details style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:20px 0;">'
+                + '<summary style="color:#dc2626;cursor:pointer;font-weight:500;">❌ 渲染失败</summary>'
+                + '<pre style="margin-top:12px;padding:12px;background:#1e293b;color:#e2e8f0;border-radius:8px;overflow-x:auto;font-size:13px;">'
+                + (chartData[i] || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                + '</pre></details>';
+              div.classList.add('rendered');
+            });
+          }
+
+          // Lazy render using IntersectionObserver
+          if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver(function(entries) {
+              entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                  var idx = Array.prototype.indexOf.call(mermaidDivs, entry.target);
+                  renderOne(entry.target, idx);
+                  observer.unobserve(entry.target);
+                }
+              });
+            }, { rootMargin: '200px' });
+            Array.prototype.forEach.call(mermaidDivs, function(div, i) {
+              observer.observe(div);
+            });
+          } else {
+            // Fallback: render all immediately
+            Array.prototype.forEach.call(mermaidDivs, function(div, i) {
+              renderOne(div, i);
+            });
+          }
+        } catch(e) {
+          showError('图表渲染失败');
+        }
+      }
+
+      function tryLoadMermaid() {
+        if (sourceIndex >= sources.length) {
+          showError('无法加载图表库');
+          return;
+        }
+        var script = document.createElement('script');
+        script.src = sources[sourceIndex];
+        script.async = true;
+        script.onload = function() {
+          if (typeof mermaid === 'undefined') {
+            sourceIndex++;
+            tryLoadMermaid();
+            return;
+          }
+          renderMermaid();
+        };
+        script.onerror = function() {
+          sourceIndex++;
+          tryLoadMermaid();
+        };
+        document.head.appendChild(script);
+      }
+
+      if (document.readyState === 'complete') {
+        setTimeout(tryLoadMermaid, 100);
+      } else {
+        window.addEventListener('load', function() { setTimeout(tryLoadMermaid, 100); });
+      }
+    })();
+  </script>
+</body>
+</html>
